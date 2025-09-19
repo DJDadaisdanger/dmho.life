@@ -8,9 +8,47 @@
         body {
             background-color: #000;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 100vh;
+            overflow: hidden;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             color: #fff;
+        }
+        
+        .terminal {
+            padding: 20px;
+        }
+        
+        .prompt {
+            color: #fff;
+            margin-right: 8px;
+        }
+        
+        .typewriter {
+            display: flex;
+        }
+        
+        .typewriter-text {
+            color: #fff;
+            overflow: hidden;
+            border-right: 2px solid #fff;
+            white-space: nowrap;
+            width: 0;
+            animation: 
+                typing 2s steps(12, end) forwards,
+                blink-caret 1s step-end infinite;
+            animation-delay: 0.5s;
+        }
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #fff; }
         }
     </style>
 </head>
@@ -21,13 +59,12 @@
             <div class="typewriter-text">Hello World!!</div>
         </div>
     </div>
-     <script>
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                window.location.href = 'gui.html';
-            }
-        });
-    </script>
 </body>
-
+<script>
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            window.location.href = 'gui.html';
+        }
+    });
+</script>
 </html>
