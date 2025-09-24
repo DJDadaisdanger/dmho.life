@@ -10,67 +10,25 @@
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: flex-start;
-            align-items: flex-start;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
             overflow: hidden;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            color: #fff;
         }
-        
-        .terminal {
-            padding: 20px;
-        }
-        
-        .prompt {
-            color: #fff;
-            margin-right: 8px;
-        }
-        
-        .typewriter {
-            display: flex;
-        }
-        
-        .typewriter-text {
-            color: #fff;
-            overflow: hidden;
-            border-right: 2px solid #fff;
-            white-space: nowrap;
-            width: 0;
-            animation: 
-                typing 2s steps(12, end) forwards,
-                blink-caret 1s step-end infinite;
-            animation-delay: 0.5s;
-        }
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
-        @keyframes blink-caret {
-            from, to { border-color: transparent }
-            50% { border-color: #fff; }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
-    <div class="terminal">
-        <div class="typewriter">
-            <span class="prompt">></span>
-            <div class="typewriter-text">Hello World!!</div>
-        </div>
-    </div>
+    <iframe src="gui.html"></iframe>
 </body>
 <script>
-    
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            window.location.href = 'gui.html';
-        }
-    });
-
     if (/Mobi|Android/i.test(navigator.userAgent)) {
-        alert("This wasn't made for mobile. If things break, that's on you. IDC, it's a skill issue.");
+        alert("This wasn't made for mobile. If things don't function, that's on you. IDC, it's a skill issue.");
+  alert("Don't try to act smart :skull:");
     }
-
 </script>
 </html>

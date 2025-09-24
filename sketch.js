@@ -19,7 +19,7 @@ for(var i = 0;i < points.length;i++){
 }
 
 function draw() {
-background(00);
+background(0);
 for(var i = 0;i < points.length;i++){
   var v = vehicles[i];
   v.behaviors();
