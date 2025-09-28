@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -9,14 +10,111 @@
         }
     </style>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <script>
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.p5=f()}})(function(){
+/*! p5.js v1.1.9 July 22, 2020 */
+return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({
+2:[function(_dereq_,module,exports){function _arrayWithHoles(arr){if(Array.isArray(arr))return arr}module.exports=_arrayWithHoles},{}],3:[function(_dereq_,module,exports){function _arrayWithoutHoles(arr){if(Array.isArray(arr)){for(var i=0,arr2=new Array(arr.length);i<arr.length;i++){arr2[i]=arr[i]}return arr2}}module.exports=_arrayWithoutHoles},{}],4:[function(_dereq_,module,exports){function _assertThisInitialized(self){if(self===void 0){throw new ReferenceError("this hasn't been initialised - super() hasn't been called")}return self}module.exports=_assertThisInitialized},{}],5:[function(_dereq_,module,exports){function _classCallCheck(instance,Constructor){if(!(instance instanceof Constructor)){throw new TypeError("Cannot call a class as a function")}}module.exports=_classCallCheck},{}],6:[function(_dereq_,module,exports){function _defineProperties(target,props){for(var i=0;i<props.length;i++){var descriptor=props[i];descriptor.enumerable=descriptor.enumerable||false;descriptor.configurable=true;if("value"in descriptor)descriptor.writable=true;Object.defineProperty(target,descriptor.key,descriptor)}}function _createClass(Constructor,protoProps,staticProps){if(protoProps)_defineProperties(Constructor.prototype,protoProps);if(staticProps)_defineProperties(Constructor,staticProps);return Constructor}module.exports=_createClass},{}],7:[function(_dereq_,module,exports){function _defineProperty(obj,key,value){if(key in obj){Object.defineProperty(obj,key,{value:value,enumerable:true,configurable:true,writable:true})}else{obj[key]=value}return obj}module.exports=_defineProperty},{}],8:[function(_dereq_,module,exports){function _getPrototypeOf(o){module.exports=_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf:function _getPrototypeOf(o){return o.__proto__||Object.getPrototypeOf(o)};return _getPrototypeOf(o)}module.exports=_getPrototypeOf},{}],9:[function(_dereq_,module,exports){var setPrototypeOf=_dereq_("./setPrototypeOf");function _inherits(subClass,superClass){if(typeof superClass!=="function"&&superClass!==null){throw new TypeError("Super expression must either be null or a function")}subClass.prototype=Object.create(superClass&&superClass.prototype,{constructor:{value:subClass,writable:true,configurable:true}});if(superClass)setPrototypeOf(subClass,superClass)}module.exports=_inherits},{"./setPrototypeOf":16}],10:[function(_dereq_,module,exports){function _iterableToArray(iter){if(Symbol.iterator in Object(iter)||Object.prototype.toString.call(iter)==="[object Arguments]")return Array.from(iter)}module.exports=_iterableToArray},{}],11:[function(_dereq_,module,exports){function _iterableToArrayLimit(arr,i){var _arr=[];var _n=true;var _d=false;var _e=undefined;try{for(var _i=arr[Symbol.iterator](),_s;!(_n=(_s=_i.next()).done);_n=true){_arr.push(_s.value);if(i&&_arr.length===i)break}}catch(err){_d=true;_e=err}finally{try{if(!_n&&_i["return"]!=null)_i["return"]()}finally{if(_d)throw _e}}return _arr}module.exports=_iterableToArrayLimit},{}],12:[function(_dereq_,module,exports){function _nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance")}module.exports=_nonIterableRest},{}],13:[function(_dereq_,module,exports){function _nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance")}module.exports=_nonIterableSpread},{}],14:[function(_dereq_,module,exports){var defineProperty=_dereq_("./defineProperty");function _objectSpread(target){for(var i=1;i<arguments.length;i++){var source=arguments[i]!=null?arguments[i]:{};var ownKeys=Object.keys(source);if(typeof Object.getOwnPropertySymbols==="function"){ownKeys=ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function(sym){return Object.getOwnPropertyDescriptor(source,sym).enumerable}))}ownKeys.forEach(function(key){defineProperty(target,key,source[key])})}return target}module.exports=_objectSpread},{"./defineProperty":7}],15:[function(_dereq_,module,exports){var _typeof=_dereq_("../helpers/typeof");var assertThisInitialized=_dereq_("./assertThisInitialized");function _possibleConstructorReturn(self,call){if(call&&(_typeof(call)==="object"||typeof call==="function")){return call}return assertThisInitialized(self)}module.exports=_possibleConstructorReturn},{"../helpers/typeof":19,"./assertThisInitialized":4}],16:[function(_dereq_,module,exports){function _setPrototypeOf(o,p){module.exports=_setPrototypeOf=Object.setPrototypeOf||function _setPrototypeOf(o,p){o.__proto__=p;return o};return _setPrototypeOf(o,p)}module.exports=_setPrototypeOf},{}],17:[function(_dereq_,module,exports){var arrayWithHoles=_dereq_("./arrayWithHoles");var iterableToArrayLimit=_dereq_("./iterableToArrayLimit");var nonIterableRest=_dereq_("./nonIterableRest");function _slicedToArray(arr,i){return arrayWithHoles(arr)||iterableToArrayLimit(arr,i)||nonIterableRest()}module.exports=_slicedToArray},{"./arrayWithHoles":2,"./iterableToArrayLimit":11,"./nonIterableRest":12}],18:[function(_dereq_,module,exports){var arrayWithoutHoles=_dereq_("./arrayWithoutHoles");var iterableToArray=_dereq_("./iterableToArray");var nonIterableSpread=_dereq_("./nonIterableSpread");function _toConsumableArray(arr){return arrayWithoutHoles(arr)||iterableToArray(arr)||nonIterableSpread()}module.exports=_toConsumableArray},{"./arrayWithoutHoles":3,"./iterableToArray":10,"./nonIterableSpread":13}],19:[function(_dereq_,module,exports){function _typeof2(obj){if(typeof Symbol==="function"&&typeof Symbol.iterator==="symbol"){_typeof2=function _typeof2(obj){return typeof obj}}else{_typeof2=function _typeof2(obj){return obj&&typeof Symbol==="function"&&obj.constructor===Symbol&&obj!==Symbol.prototype?"symbol":typeof obj}}return _typeof2(obj)}function _typeof(obj){if(typeof Symbol==="function"&&_typeof2(Symbol.iterator)==="symbol"){module.exports=_typeof=function _typeof(obj){return _typeof2(obj)}}else{module.exports=_typeof=function _typeof(obj){return obj&&typeof Symbol==="function"&&obj.constructor===Symbol&&obj!==Symbol.prototype?"symbol":_typeof2(obj)}}return _typeof(obj)}module.exports=_typeof},{}],38:[function(_dereq_,module,exports){"use strict";var _main=_interopRequireDefault(_dereq_("./core/main"));_dereq_("./core/constants");_dereq_("./core/environment");_dereq_("./core/friendly_errors/stacktrace");_dereq_("./core/friendly_errors/validate_params");_dereq_("./core/friendly_errors/file_errors");_dereq_("./core/friendly_errors/fes_core");_dereq_("./core/helpers");_dereq_("./core/legacy");_dereq_("./core/preload");_dereq_("./core/p5.Element");_dereq_("./core/p5.Graphics");_dereq_("./core/p5.Renderer");_dereq_("./core/p5.Renderer2D");_dereq_("./core/rendering");_dereq_("./core/shim");_dereq_("./core/structure");_dereq_("./core/transform");_dereq_("./core/shape/2d_primitives");_dereq_("./core/shape/attributes");_dereq_("./core/shape/curves");_dereq_("./core/shape/vertex");_dereq_("./color/color_conversion");_dereq_("./color/creating_reading");_dereq_("./color/p5.Color");_dereq_("./color/setting");_dereq_("./data/p5.TypedDict");_dereq_("./data/local_storage.js");_dereq_("./dom/dom");_dereq_("./events/acceleration");_dereq_("./events/keyboard");_dereq_("./events/mouse");_dereq_("./events/touch");_dereq_("./image/filters");_dereq_("./image/image");_dereq_("./image/loading_displaying");_dereq_("./image/p5.Image");_dereq_("./image/pixels");_dereq_("./io/files");_dereq_("./io/p5.Table");_dereq_("./io/p5.TableRow");_dereq_("./io/p5.XML");_dereq_("./math/calculation");_dereq_("./math/math");_dereq_("./math/noise");_dereq_("./math/p5.Vector");_dereq_("./math/random");_dereq_("./math/trigonometry");_dereq_("./typography/attributes");_dereq_("./typography/loading_displaying");_dereq_("./typography/p5.Font");_dereq_("./utilities/array_functions");_dereq_("./utilities/conversion");_dereq_("./utilities/string_functions");_dereq_("./utilities/time_date");_dereq_("./webgl/3d_primitives");_dereq_("./webgl/interaction");_dereq_("./webgl/light");_dereq_("./webgl/loading");_dereq_("./webgl/material");_dereq_("./webgl/p5.Camera");_dereq_("./webgl/p5.Geometry");_dereq_("./webgl/p5.Matrix");_dereq_("./webgl/p5.RendererGL.Immediate");_dereq_("./webgl/p5.RendererGL");_dereq_("./webgl/p5.RendererGL.Retained");_dereq_("./webgl/p5.Shader");_dereq_("./webgl/p5.RenderBuffer");_dereq_("./webgl/p5.Texture");_dereq_("./webgl/text");_dereq_("./core/init");function _interopRequireDefault(obj){return obj&&obj.__esModule?obj:{default:obj}}module.exports=_main.default},{"./color/color_conversion":39,"./color/creating_reading":40,"./color/p5.Color":41,"./color/setting":42,"./core/constants":43,"./core/environment":44,"./core/friendly_errors/fes_core":46,"./core/friendly_errors/file_errors":47,"./core/friendly_errors/stacktrace":48,"./core/friendly_errors/validate_params":49,"./core/helpers":50,"./core/init":51,"./core/legacy":53,"./core/main":54,"./core/p5.Element":55,"./core/p5.Graphics":56,"./core/p5.Renderer":57,"./core/p5.Renderer2D":58,"./core/preload":59,"./core/rendering":60,"./core/shape/2d_primitives":61,"./core/shape/attributes":62,"./core/shape/curves":63,"./core/shape/vertex":64,"./core/shim":65,"./core/structure":66,"./core/transform":67,"./data/local_storage.js":68,"./data/p5.TypedDict":69,"./dom/dom":70,"./events/acceleration":71,"./events/keyboard":72,"./events/mouse":73,"./events/touch":74,"./image/filters":75,"./image/image":76,"./image/loading_displaying":77,"./image/p5.Image":78,"./image/pixels":79,"./io/files":80,"./io/p5.Table":81,"./io/p5.TableRow":82,"./io/p5.XML":83,"./math/calculation":84,"./math/math":85,"./math/noise":86,"./math/p5.Vector":87,"./math/random":88,"./math/trigonometry":89,"./typography/attributes":90,"./typography/loading_displaying":91,"./typography/p5.Font":92,"./utilities/array_functions":93,"./utilities/conversion":94,"./utilities/string_functions":95,"./utilities/time_date":96,"./webgl/3d_primitives":97,"./webgl/interaction":98,"./webgl/light":99,"./webgl/loading":100,"./webgl/material":101,"./webgl/p5.Camera":102,"./webgl/p5.Geometry":103,"./webgl/p5.Matrix":104,"./webgl/p5.RenderBuffer":105,"./webgl/p5.RendererGL":108,"./webgl/p5.RendererGL.Immediate":106,"./webgl/p5.RendererGL.Retained":107,"./webgl/p5.Shader":109,"./webgl/p5.Texture":110,"./webgl/text":111}],114:[function(_dereq_,module,exports){"use strict";Object.defineProperty(exports,"__esModule",{value:true});exports.default=void 0;var _translation=_interopRequireDefault(_dereq_("./en/translation"));var _translation2=_interopRequireDefault(_dereq_("./es/translation"));function _interopRequireDefault(obj){return obj&&obj.__esModule?obj:{default:obj}}var _default={en:{translation:_translation.default},es:{translation:_translation2.default}};exports.default=_default},{"./en/translation":112,"./es/translation":113}]}).call(this,typeof global!=="undefined"?global:typeof self!=="undefined"?self:typeof window!=="undefined"?window:{})});
+//# sourceMappingURL=p5.js.map
+</script>
+<link rel="stylesheet" type="text/css" href="style.css">
     <meta charset="utf-8" />
 
   </head>
   <body>
-    <script src="sketch.js"></script>
-    <script src="vehicle.js"></script>
+    <script>
+var vehicles = [];
+var font; 
+var points;
+function preload(){
+  font = loadFont('font.TTF')  
+}
+function setup() {
+createCanvas(1290, 300);
+background(0);
+textFont(font);
+
+
+points = font.textToPoints('DJDada',100,232,137);
+for(var i = 0;i < points.length;i++){
+  var pt = points[i];
+  var vehicle = new Vehicle(pt.x,pt.y);
+  vehicles.push(vehicle);
+}
+}
+
+function draw() {
+background(0);
+for(var i = 0;i < points.length;i++){
+  var v = vehicles[i];
+  v.behaviors();
+  v.update();
+  v.show();
+}
+}
+
+function Vehicle(x,y){
+    this.pos = createVector(random(width),random(height));
+    this.target = createVector(x,y);
+    this.vel = p5.Vector.random2D();
+    this.acc = createVector();
+    this.r = 8;
+    this.maxspeed = 10;
+    this.maxforce = 1;
+  }
+  
+  Vehicle.prototype.behaviors = function(){
+    var arrive = this.arrive(this.target);
+    var mouse = createVector(mouseX,mouseY);
+    var flee = this.flee(mouse);
+    arrive.mult(1);
+    flee.mult(5);
+    this.applyForce(flee);
+    this.applyForce(arrive);
+  }
+  
+  Vehicle.prototype.applyForce = function(f){
+   this.acc.add(f);
+  }
+  
+  Vehicle.prototype.update = function(){
+    this.pos.add(this.vel);
+    this.vel.add(this.acc);
+    this.acc.mult(0);
+  }
+  
+  Vehicle.prototype.show = function(){
+    stroke(255);
+    strokeWeight(8);
+    point(this.pos.x,this.pos.y);
+  }
+  
+  Vehicle.prototype.arrive = function(target){
+    var desired = p5.Vector.sub(target,this.pos);
+    var d = desired.mag();
+    var speed = this.maxspeed;
+    if (d < 100){
+     speed = map (d,0,100,0,this.maxspeed);
+    }
+    desired.setMag(speed);
+    var steer = p5.Vector.sub(desired,this.vel);
+    steer.limit(this.maxforce);
+    return steer;
+  }
+  
+  Vehicle.prototype.flee= function(target){
+    var desired = p5.Vector.sub(target,this.pos);
+    var d = desired.mag();
+    if(d < 50){
+    desired.setMag(this.maxspeed);
+    desired.mult(-1);
+    var steer = p5.Vector.sub(desired,this.vel);
+    steer.limit(this.maxforce);
+    return steer;
+    }else{
+      return createVector(0,0);
+    }
+  }
+    </script>
   </body>
 </html>
