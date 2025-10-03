@@ -16,9 +16,9 @@
             background-color: #000012;
             color: #ffffff;
             font-family: 'WimpyKid', cursive;
-            line-height: 1.7;
+            line-height: 1.5;
             padding: 40px 20px;
-            max-width: 800px;
+            max-width: 850px;
             margin: 0 auto;
             min-height: 100vh;
         }
@@ -26,8 +26,11 @@
         .container {
             padding: 10px;
         }
-        
+        h1 span {
+        color: white;
+        } 
         h1 {
+            font-weight: bold;
             font-size: 3.5rem;
             margin-bottom: 40px;
             color: #00e5ff;
@@ -51,6 +54,50 @@
             color: #00e5ff;
         }
         
+        .quote {
+            font-size:x-large;
+            font-style: italic;
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 229, 255, 0.1);
+            border-left: 3px solid #00e5ff;
+            border-right: 3px solid #00e5ff;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        .quote-text:before {
+            content: '" ';
+            font-size: 2rem;
+            color: #00e5ff;
+            margin-right: 5px;
+        }
+        
+        .quote-text:after {
+            content: '"';
+            font-size: 2rem;
+            color: #00e5ff;
+            margin-left: 5px;
+        }
+        
+        .quote-author {
+            display: block;
+            text-align: right;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #00e5ff;
+            font-style: normal;
+        }
+        
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px rgba(0, 229, 255, 0.3);
+            }
+            to {
+                box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+            }
+        }
+        
         @media (max-width: 800px) {
             body {
                 padding: 20px 10px;
@@ -72,23 +119,29 @@
 </head>
 <body>
     <div class="container">
-        <h1>About <span class="accent">DJDada</span></h1>
+        <h1>DJDada<span> -not just an entity</span></h1>
         <img src="djdada.jpeg" alt="profile pic" width="400" style="float: left; margin-right: 20px; margin-bottom: 20px;">
-        <p><span class="highlight">Hey, I'm djdada</span> — a guy who's still figuring things out and sometimes struggles to get it all done, but always curious and driven by my interests.</p>
+       
+        <p><span class="highlight">DJDada</span> — a guy who's still figuring things out and sometimes struggles to get it all done, but always curious and driven by his interests (in weird things).</p>
         
-        <p>I tend to have <span class="highlight">quick reflexes and rapid responses</span>—I usually act spontaneously on whatever idea comes to me, which fuels my creativity but sometimes results in glitches or hiccups along the way.</p>
+        <p>-> tends to have quick reflexes and rapid responses—by default act spontaneously on whatever idea comes to me, which fuels my creativity but sometimes results in glitches or hiccups along the way.</p>
         
-        <p>I'm always <span class="highlight">frank and straightforward</span>. Many people I've met have described me as unpredictable—something I've come to accept as part of who I am.</p>
+        <p>I'm always frank and straightforward. According to ppl's pov I'm unpredictable and I feel that's a pretty noice talent.</p>
         
-        <p><span class="highlight">Communication is tough for me</span>, and social anxiety makes expressing myself with words even harder. I don't bother sugarcoating it—this is just how I am.</p>
+        <p>Communication is not my cup of tea, and social anxiety makes expressing myself with words even harder. I don't care about it—this is just how I am.</p>
         
-        <p>Since childhood, I've been <span class="highlight">curious about how things work</span> and what makes them tick. I'm not always great with names or technical terms, but I deeply want to understand how things function.</p>
+        <p>Ever since I was a kid, I've been curious about how things work, even if I don't know the names or technical words, I just want to understand how they function.</p>
         
-        <p>I'm not really into theory—I prefer <span class="highlight">creating things, building applications, and bringing ideas to life through visualization</span>. I'm a GUI guy at heart; if something isn't crafted well enough visually, it's hard for me to connect with it. My imagination is incredibly vivid and precise, syncing so perfectly with reality that my ideas don't feel like fantasy—they feel tangible and achievable.</p>
+        <div class="quote">
+            <span class="quote-text">You must not care about what things are; you must know what they do.</span>
+            <span class="quote-author">— Randall Munroe</span>
+        </div>
         
-        <p>On the tech side, I've built <span class="highlight">several IoT projects</span> — including one that controls a fan through voice commands. Although dealing with the main electrical connection can be dangerous, I'm someone who likes to take risks.</p>
+        <p>So basically I'm not really into theory—I prefer creating things, building applications, and bringing ideas to life through visualization. I'm a GUI guy by default; if something isn't crafted well enough visually, it's hard for me to render it and that's a compatibility issue then. My imagination is incredibly vivid and precise, crazily synchronised irl so perfectly melds with reality that my ideas don't feel like fantasy, it's just like AR but some kind of integrated in my systum by default.</p>
         
-        <p>I also <span class="highlight">love driving</span> and yearn to learn drifting, which I plan to start soon.</p>
+        <p>On the tech side, I've built several IoT projects — including one that controls a fan through voice commands. Although dealing with the main electrical connection can be dangerous but I'm someone who likes to take risks.</p>
+        
+        <p>I love driving and riding, and I'm eager to learn drifting soon—or maybe I've already started, you never know. I enjoy adventure, thrill, and challenging tasks.</p>
     </div>
 </body>
 </html>
