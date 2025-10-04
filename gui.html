@@ -19,12 +19,12 @@ function preload(){
   font = loadFont('font.TTF')  
 }
 function setup() {
-createCanvas(1290, 300);
+createCanvas(800, 300);
 background(0);
 textFont(font);
 
 
-points = font.textToPoints('DJDada',100,200,169);
+points = font.textToPoints('DJDada',137,192,169);
 for(var i = 0;i < points.length;i++){
   var pt = points[i];
   var vehicle = new Vehicle(pt.x,pt.y);
