@@ -16,7 +16,7 @@
             background-color: #000012;
             color: #ffffff;
             font-family: 'WimpyKid', cursive;
-            line-height: 1.3;
+            line-height: 1.25;
             padding: 40px 20px;
             max-width: 920px;
             margin: 0 auto;
@@ -63,7 +63,11 @@
             background: rgba(0, 229, 255, 0.1);
             border-left: 3px solid #00e5ff;
             border-right: 3px solid #00e5ff;
-            animation: glow 2s ease-in-out infinite alternate;
+            transition: box-shadow 0.5s ease-in-out;
+        }
+
+        .quote:hover {
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.7);
         }
         
         .quote-text:before {
@@ -89,15 +93,44 @@
             font-style: normal;
         }
         
-        @keyframes glow {
-            from {
-                box-shadow: 0 0 5px rgba(0, 229, 255, 0.3);
-            }
-            to {
-                box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-            }
+        .card-container {
+            width: 400px;
+            height: 400px;
+            perspective: 1000px;
+            margin-right: 20px;
+            margin-bottom: 20px;
+            float: left;
         }
-        
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card-face.front {
+            background: #000012;
+        }
+
+        .card-face img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 10px;
+        }
+
         @media (max-width: 800px) {
             body {
                 padding: 20px 10px;
@@ -119,12 +152,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>DJDada<span> -not just an entity</span></h1>
-        <img src="djdada.jpeg" alt="profile pic" width="400" style="float: left; margin-right: 20px; margin-bottom: 20px;">
+        <h1>DJDada<span> - not just an entity</span></h1>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-face front">
+                    <img src="djdada.jpeg" alt="profile pic" width="400">
+                </div>
+            </div>
+        </div>
        
-        <p><span class="highlight">DJDada</span> — a guy who's still figuring things out and sometimes struggles to get it all done, but always curious and driven by his interests (in weird things).</p>
+        <p><span class="highlight">DJDada</span> — a guy who's still figuring things out and sometimes struggles to get it all done (skill issue), but always curious and driven by his interests (in weird things).</p>
         
-        <p>I work on reflexes full-time, which works out but sometimes results in glitches or hiccups along the way.</p>
+        <p>I work on reflexes full-time, which works out mostly, but sometimes results in glitches or hiccups along the way.</p>
         
         <p>I'm always frank and straightforward. According to ppl's pov I'm unpredictable and I feel that's a pretty noice talent.</p>
         
@@ -141,7 +180,32 @@
         
         <p>On the tech side, I've built several IoT projects — including one that controls a fan through voice commands. Although dealing with the main electrical connection can be dangerous but I'm someone who likes to take risks.</p>
         
-        <p>I love driving and riding, and I'm eager to learn drifting soon—or maybe I've already started, you never know. I enjoy adventure, thrill, and challenging tasks.</p>
+        <p>I enjoy adventure, thrill, and challenging tasks also I love driving and riding, and I yearn to learn drifting soon—or maybe I've already started, you never know.</p>
     </div>
+
+    <script>
+        const cardContainer = document.querySelector('.card-container');
+        const card = document.querySelector('.card');
+
+        let animationFrameId = null;
+
+        cardContainer.addEventListener('mousemove', (e) => {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => {
+                const { width, height, left, top } = cardContainer.getBoundingClientRect();
+                const x = e.clientX - left;
+                const y = e.clientY - top;
+                const rotateX = (y / height - 0.5) * -25;
+                const rotateY = (x / width - 0.5) * 25;
+
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+            });
+        });
+
+        cardContainer.addEventListener('mouseleave', () => {
+            cancelAnimationFrame(animationFrameId);
+            card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
+        });
+    </script>
 </body>
 </html>
