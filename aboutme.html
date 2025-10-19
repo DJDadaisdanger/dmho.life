@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About - DJDada</title>
-    <link href='https://fonts.cdnfonts.com/css/wimpykid' rel='stylesheet'>
+    <link href='https://fonts.cdnfonts.com/css/wimpykid?display=swap' rel='stylesheet'>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,6 @@
             max-width: 920px;
             margin: 0 auto;
             min-height: 100vh;
-            font-weight: bold;
         }
         
         .container {
@@ -36,11 +35,12 @@
             margin-bottom: 40px;
             color: #00e5ff;
             text-align: center;
-            font-weight: normal;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
         
         p {
+            line-height: 1.25;
+            letter-spacing: 0.4px;
             margin-bottom: 23px;
             font-size: 1.3rem;
             color: #ffffff;
@@ -53,10 +53,34 @@
         .accent {
             color: #00e5ff;
         }
-        
+        a {
+            color: #00ffdd;
+            text-decoration: underline;
+            font-size: 2rem;
+            margin-top: 20px;
+        }
+        .button-container {
+ margin-top: 20px;
+ text-align: center; /* Optional: centers the button */
+        }
+
+ .work-button {
+ display: inline-block;
+ padding: 15px 30px;
+ background-color: #00e5ff;
+ color: #000012;
+ text-decoration: none;
+ border-radius: 25px; /* Makes the button rounded */
+ font-size: 1.5rem;
+ font-weight: bold;
+ transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+ .work-button:hover { background-color: #ffffff; transform: scale(1.1); }
+
         .quote {
             font-size:x-large;
             font-style: italic;
+            font-weight: bold;
             text-align: center;
             margin: 30px 0;
             padding: 20px;
@@ -156,7 +180,7 @@
         <div class="card-container">
             <div class="card">
                 <div class="card-face front">
-                    <img src="djdada.jpeg" alt="profile pic" width="400">
+                    <img src="djdada.webp" alt="profile pic" width="400" height="400">
                 </div>
             </div>
         </div>
@@ -207,5 +231,11 @@
             card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
         });
     </script>
+    
+    <div class="button-container">
+        <a href="work.html" class="work-button">Here's some of my work</a>
+    </div>
+
 </body>
 </html>
+
