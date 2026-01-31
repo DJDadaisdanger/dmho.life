@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            margin: 0;
+            padding: 2em;
+            font-family: monospace;
+        }
+        #content {
+            text-align: left;
+        }
+        .comments-section {
+            margin-top: 2em;
+        }
+        .comment-box {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+        .btn {
+            padding: 10px 15px;
+            background-color: #555;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="content"></div>
+    <div class="actions" style="margin-top: 20px;">
+        <button class="btn" onclick="showCommentBox()">Comment</button>
+        <button class="btn">Suggestions</button>
+        <button class="btn">Contribute</button>
+    </div>
+    <div id="comment-box-container" style="display: none; margin-top: 20px;">
+        <textarea id="comment-input" class="comment-box" rows="4" placeholder="Enter your comment..."></textarea>
+        <button class="btn" onclick="submitComment()">Submit</button>
+    </div>
+    <div class="comments-section">
+        <h3>Comments</h3>
+        <div id="comments-list"></div>
+    </div>
+
+    <script>
+        fetch('research.md')
+            .then(response => response.text())
+            .then(text => {
+                document.getElementById('content').innerHTML = marked.parse(text);
+            });
+        
+        function showCommentBox() {
+            const commentBox = document.getElementById('comment-box-container');
+            commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function submitComment() {
+            const commentInput = document.getElementById('comment-input');
+            const commentText = commentInput.value;
+            if (commentText.trim() !== '') {
+                const commentsList = document.getElementById('comments-list');
+                const newComment = document.createElement('div');
+                newComment.classList.add('comment-box');
+                newComment.textContent = commentText;
+                commentsList.appendChild(newComment);
+                commentInput.value = '';
+                showCommentBox();
+            }
+        }
+    </script>
+</body>
+</html>
