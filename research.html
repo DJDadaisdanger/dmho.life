@@ -29,11 +29,12 @@
         }
         .btn {
             padding: 10px 15px;
-            background-color: #555;
-            color: white;
+            background-color: #00ffdd;
+            color: black;
             border: none;
             cursor: pointer;
             margin-right: 10px;
+            font-family: monospace;
         }
     </style>
 </head>
@@ -53,7 +54,25 @@
         <div id="comments-list"></div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const commentsCollection = db.collection("comments");
+
         fetch('research.md')
             .then(response => response.text())
             .then(text => {
@@ -69,15 +88,116 @@
             const commentInput = document.getElementById('comment-input');
             const commentText = commentInput.value;
             if (commentText.trim() !== '') {
-                const commentsList = document.getElementById('comments-list');
-                const newComment = document.createElement('div');
-                newComment.classList.add('comment-box');
-                newComment.textContent = commentText;
-                commentsList.appendChild(newComment);
-                commentInput.value = '';
-                showCommentBox();
+                commentsCollection.add({
+                    text: commentText,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    commentInput.value = '';
+                    showCommentBox();
+                    loadComments();
+                })
+                .catch(error => {
+                    console.error("Error adding document: ", error);
+                });
             }
         }
+
+        function deleteComment(id) {
+            commentsCollection.doc(id).delete().then(() => {
+                loadComments();
+            }).catch((error) => {
+                console.error("Error removing document: ", error);
+            });
+        }
+
+        function editComment(id, oldText) {
+            const newText = prompt("Edit your comment:", oldText);
+            if (newText && newText.trim() !== '') {
+                commentsCollection.doc(id).update({
+                    text: newText
+                })
+                .then(() => {
+                    loadComments();
+                })
+                .catch((error) => {
+                    console.error("Error updating document: ", error);
+                });
+            }
+        }
+
+        function replyToComment(id) {
+            const replyText = prompt("Write your reply:");
+            if (replyText && replyText.trim() !== '') {
+                const reply = {
+                    text: replyText,
+                    timestamp: new Date()
+                };
+                commentsCollection.doc(id).collection("replies").add(reply)
+                .then(() => {
+                    loadComments();
+                })
+                .catch((error) => {
+                    console.error("Error adding reply: ", error);
+                });
+            }
+        }
+
+        function loadComments() {
+            commentsCollection.orderBy("timestamp", "desc").get().then((querySnapshot) => {
+                const commentsList = document.getElementById('comments-list');
+                commentsList.innerHTML = '';
+                querySnapshot.forEach((doc) => {
+                    const comment = doc.data();
+                    const commentElement = document.createElement('div');
+                    commentElement.classList.add('comment-box');
+                    
+                    const commentText = document.createElement('p');
+                    commentText.textContent = comment.text;
+                    commentElement.appendChild(commentText);
+
+                    const actions = document.createElement('div');
+                    const replyButton = document.createElement('button');
+                    replyButton.textContent = "Reply";
+                    replyButton.classList.add('btn');
+                    replyButton.onclick = () => replyToComment(doc.id);
+                    actions.appendChild(replyButton);
+                    
+                    const editButton = document.createElement('button');
+                    editButton.textContent = "Edit";
+                    editButton.classList.add('btn');
+                    editButton.onclick = () => editComment(doc.id, comment.text);
+                    actions.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = "Delete";
+                    deleteButton.classList.add('btn');
+                    deleteButton.onclick = () => deleteComment(doc.id);
+                    actions.appendChild(deleteButton);
+                    
+                    commentElement.appendChild(actions);
+
+                    // Load replies
+                    const repliesList = document.createElement('div');
+                    repliesList.style.marginLeft = "20px";
+                    commentElement.appendChild(repliesList);
+
+                    commentsCollection.doc(doc.id).collection("replies").orderBy("timestamp", "asc").get().then((repliesSnapshot) => {
+                        repliesSnapshot.forEach((replyDoc) => {
+                            const reply = replyDoc.data();
+                            const replyElement = document.createElement('div');
+                            replyElement.classList.add('comment-box');
+                            replyElement.textContent = reply.text;
+                            repliesList.appendChild(replyElement);
+                        });
+                    });
+
+                    commentsList.appendChild(commentElement);
+                });
+            });
+        }
+
+        window.onload = loadComments;
     </script>
 </body>
 </html>
