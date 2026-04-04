@@ -34,9 +34,10 @@ for(var i = 0;i < points.length;i++){
 
 function draw() {
 background(0);
+var mouse = createVector(mouseX, mouseY);
 for(var i = 0;i < points.length;i++){
   var v = vehicles[i];
-  v.behaviors();
+  v.behaviors(mouse);
   v.update();
   v.show();
 }
@@ -52,9 +53,8 @@ function Vehicle(x,y){
     this.maxforce = 1;
   }
   
-  Vehicle.prototype.behaviors = function(){
+  Vehicle.prototype.behaviors = function(mouse){
     var arrive = this.arrive(this.target);
-    var mouse = createVector(mouseX,mouseY);
     var flee = this.flee(mouse);
     arrive.mult(1);
     flee.mult(5);
