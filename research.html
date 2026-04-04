@@ -129,10 +129,24 @@
         }
 
         function loadComments() {
-            commentsCollection.orderBy("timestamp", "desc").get().then((querySnapshot) => {
+            const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
+            const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
+
+            Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
                 const commentsList = document.getElementById('comments-list');
                 commentsList.innerHTML = '';
-                querySnapshot.forEach((doc) => {
+
+                const repliesMap = new Map();
+                repliesSnapshot.forEach((replyDoc) => {
+                    const reply = replyDoc.data();
+                    const parentId = replyDoc.ref.parent.parent.id;
+                    if (!repliesMap.has(parentId)) {
+                        repliesMap.set(parentId, []);
+                    }
+                    repliesMap.get(parentId).push(reply);
+                });
+
+                commentsSnapshot.forEach((doc) => {
                     const comment = doc.data();
                     const commentElement = document.createElement('div');
                     commentElement.classList.add('comment-box');
@@ -167,18 +181,18 @@
                     repliesList.style.marginLeft = "20px";
                     commentElement.appendChild(repliesList);
 
-                    commentsCollection.doc(doc.id).collection("replies").orderBy("timestamp", "asc").get().then((repliesSnapshot) => {
-                        repliesSnapshot.forEach((replyDoc) => {
-                            const reply = replyDoc.data();
-                            const replyElement = document.createElement('div');
-                            replyElement.classList.add('comment-box');
-                            replyElement.textContent = reply.text;
-                            repliesList.appendChild(replyElement);
-                        });
+                    const replies = repliesMap.get(doc.id) || [];
+                    replies.forEach((reply) => {
+                        const replyElement = document.createElement('div');
+                        replyElement.classList.add('comment-box');
+                        replyElement.textContent = reply.text;
+                        repliesList.appendChild(replyElement);
                     });
 
                     commentsList.appendChild(commentElement);
                 });
+            }).catch((error) => {
+                console.error("Error loading comments and replies: ", error);
             });
         }
 
