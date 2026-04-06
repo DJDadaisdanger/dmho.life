@@ -25102,7 +25102,10 @@
 
               // TODO(deanm): We should never really get here, we should have received
               // and EOI.
-              if (cur_shift < cur_code_size) break;
+              if (cur_shift < cur_code_size) {
+                console.warn("Corrupted GIF: stream ended before EOI");
+                break;
+              }
 
               var code = cur & code_mask;
               cur >>= cur_code_size;
