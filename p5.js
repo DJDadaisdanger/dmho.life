@@ -24527,9 +24527,11 @@
               buf[p++] = (w >> 8) & 0xff;
               buf[p++] = h & 0xff;
               buf[p++] = (h >> 8) & 0xff;
+
+              var is_interlaced = opts.interlace === true || opts.interlaced === true;
+
               // NOTE: No sort flag (unused?).
-              // TODO(deanm): Support interlace.
-              buf[p++] = using_local_palette === true ? 0x80 | (min_code_size - 1) : 0;
+              buf[p++] = (using_local_palette === true ? 0x80 | (min_code_size - 1) : 0) | (is_interlaced ? 0x40 : 0);
 
               // - Local Color Table
               if (using_local_palette === true) {
@@ -24541,11 +24543,33 @@
                 }
               }
 
+              var pixels = indexed_pixels;
+              if (is_interlaced) {
+                pixels = new Uint8Array(w * h);
+                var offset = 0;
+                // Pass 1
+                for (var i = 0; i < h; i += 8) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 2
+                for (var i = 4; i < h; i += 8) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 3
+                for (var i = 2; i < h; i += 4) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 4
+                for (var i = 1; i < h; i += 2) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+              }
+
               p = GifWriterOutputLZWCodeStream(
                 buf,
                 p,
                 min_code_size < 2 ? 2 : min_code_size,
-                indexed_pixels
+                pixels
               );
 
               return p;
