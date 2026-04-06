@@ -33858,10 +33858,15 @@
                 var ulUnicodeRange2 = 0;
                 var ulUnicodeRange3 = 0;
                 var ulUnicodeRange4 = 0;
+                var allUnicodes = [];
 
                 for (var i = 0; i < font.glyphs.length; i += 1) {
                   var glyph = font.glyphs.get(i);
                   var unicode = glyph.unicode | 0;
+
+                  if (unicode > 0) {
+                    allUnicodes.push(unicode);
+                  }
 
                   if (isNaN(glyph.advanceWidth)) {
                     throw new Error(
@@ -33945,6 +33950,89 @@
 
                 var maxpTable = maxp.make(font.glyphs.length);
 
+                function calcCodePageRanges(unicodes) {
+                  var hasAscii = true;
+                  for (var i = 0x20; i <= 0x7E; i++) {
+                    if (unicodes.indexOf(i) === -1) {
+                      hasAscii = false;
+                      break;
+                    }
+                  }
+
+                  var hasLineart = unicodes.indexOf(0x2524) !== -1;
+                  var has221A = unicodes.indexOf(0x221A) !== -1;
+                  var has0405 = unicodes.indexOf(0x0405) !== -1;
+                  var has255C = unicodes.indexOf(0x255C) !== -1;
+                  var has00BD = unicodes.indexOf(0x00BD) !== -1;
+                  var has2030 = unicodes.indexOf(0x2030) !== -1;
+                  var has2211 = unicodes.indexOf(0x2211) !== -1;
+
+                  var bits = [];
+                  for (var i = 0; i < unicodes.length; i++) {
+                    var uni = unicodes[i];
+                    if (uni === 0x00DE && hasAscii) { bits.push(0); }
+                    else if (uni === 0x013D && hasAscii) {
+                      bits.push(1);
+                      if (hasLineart) bits.push(58);
+                    } else if (uni === 0x0411) {
+                      bits.push(2);
+                      if (has0405 && hasLineart) bits.push(57);
+                      if (has255C && hasLineart) bits.push(49);
+                    } else if (uni === 0x0386) {
+                      bits.push(3);
+                      if (hasLineart && has00BD) bits.push(48);
+                      if (hasLineart && has221A) bits.push(60);
+                    } else if (uni === 0x0130 && hasAscii) {
+                      bits.push(4);
+                      if (hasLineart) bits.push(56);
+                    } else if (uni === 0x05D0) {
+                      bits.push(5);
+                      if (hasLineart && has221A) bits.push(53);
+                    } else if (uni === 0x0631) {
+                      bits.push(6);
+                      if (has221A) bits.push(51);
+                      if (hasLineart) bits.push(61);
+                    } else if (uni === 0x0157 && hasAscii) {
+                      bits.push(7);
+                      if (hasLineart) bits.push(59);
+                    } else if (uni === 0x20AB && hasAscii) { bits.push(8); }
+                    else if (uni === 0x0E45) { bits.push(16); }
+                    else if (uni === 0x30A8) { bits.push(17); }
+                    else if (uni === 0x3105) { bits.push(18); }
+                    else if (uni === 0x3131) { bits.push(19); }
+                    else if (uni === 0x592E) { bits.push(20); }
+                    else if (uni === 0xACF4) { bits.push(21); }
+                    else if (uni === 0x2665 && hasAscii) { bits.push(30); }
+                    else if (uni === 0x00FE && hasAscii && hasLineart) { bits.push(54); }
+                    else if (uni === 0x255A && hasAscii) {
+                      bits.push(62);
+                      bits.push(63);
+                    } else if (hasAscii && hasLineart && has221A) {
+                      if (uni === 0x00C5) bits.push(50);
+                      else if (uni === 0x00E9) bits.push(52);
+                      else if (uni === 0x00F5) bits.push(55);
+                    }
+                  }
+
+                  if (hasAscii && has2030 && has2211) {
+                    bits.push(29);
+                  }
+
+                  var ulCodePageRange1 = 0;
+                  var ulCodePageRange2 = 0;
+                  for (var i = 0; i < bits.length; i++) {
+                    var bit = bits[i];
+                    if (bit < 32) {
+                      ulCodePageRange1 |= (1 << bit);
+                    } else {
+                      ulCodePageRange2 |= (1 << (bit - 32));
+                    }
+                  }
+                  return [ulCodePageRange1, ulCodePageRange2];
+                }
+
+                var codePageRanges = calcCodePageRanges(allUnicodes);
+
                 var os2Table = os2.make({
                   xAvgCharWidth: Math.round(globals.advanceWidthAvg),
                   usWeightClass: font.tables.os2.usWeightClass,
@@ -33965,7 +34053,8 @@
                   sTypoLineGap: 0,
                   usWinAscent: globals.yMax,
                   usWinDescent: Math.abs(globals.yMin),
-                  ulCodePageRange1: 1, // FIXME: hard-code Latin 1 support for now
+                  ulCodePageRange1: codePageRanges[0],
+                  ulCodePageRange2: codePageRanges[1],
                   sxHeight: metricsForChar(font, 'xyvw', {
                     yMax: Math.round(globals.ascender / 2)
                   }).yMax,
