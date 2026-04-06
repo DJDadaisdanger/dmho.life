@@ -66902,14 +66902,25 @@
            *
            * http://blogs.adobe.com/webplatform/2013/01/28/blending-features-in-canvas/
            */
-          // TODO: - Accept an array of alpha values.
-          //       - Use other channels of an image. p5 uses the
+          // TODO: - Use other channels of an image. p5 uses the
           //       blue channel (which feels kind of arbitrary). Note: at the
           //       moment this method does not match native processing's original
           //       functionality exactly.
           _main.default.Image.prototype.mask = function(p5Image) {
             if (p5Image === undefined) {
               p5Image = this;
+            }
+            if (Array.isArray(p5Image)) {
+              this.loadPixels();
+              if (p5Image.length !== this.pixels.length / 4) {
+                console.warn('The length of the alpha array must match the number of pixels in the image.');
+                return;
+              }
+              for (var i = 0; i < p5Image.length; i++) {
+                this.pixels[i * 4 + 3] = p5Image[i];
+              }
+              this.updatePixels();
+              return;
             }
             var currBlend = this.drawingContext.globalCompositeOperation;
 
