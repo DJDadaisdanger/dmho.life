@@ -140,15 +140,11 @@
             }
         }
 
-        function loadComments() {
+        function fetchCommentsData() {
             const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
             const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
 
             return Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
-                const commentsList = document.getElementById('comments-list');
-                commentsList.innerHTML = '';
-
-                const user = firebase.auth().currentUser;
                 const repliesMap = new Map();
                 repliesSnapshot.forEach((replyDoc) => {
                     const reply = replyDoc.data();
@@ -159,56 +155,76 @@
                     repliesMap.get(parentId).push(reply);
                 });
 
+                const comments = [];
                 commentsSnapshot.forEach((doc) => {
-                    const comment = doc.data();
-                    const commentElement = document.createElement('div');
-                    commentElement.classList.add('comment-box');
-                    
-                    const commentText = document.createElement('p');
-                    commentText.textContent = comment.text;
-                    commentElement.appendChild(commentText);
-
-                    const actions = document.createElement('div');
-                    const replyButton = document.createElement('button');
-                    replyButton.textContent = "Reply";
-                    replyButton.classList.add('btn');
-                    replyButton.onclick = () => replyToComment(doc.id);
-                    actions.appendChild(replyButton);
-                    
-                    if (user && user.uid === comment.authorId) {
-                        const editButton = document.createElement('button');
-                        editButton.textContent = "Edit";
-                        editButton.classList.add('btn');
-                        editButton.onclick = () => editComment(doc.id, comment.text);
-                        actions.appendChild(editButton);
-
-                        const deleteButton = document.createElement('button');
-                        deleteButton.textContent = "Delete";
-                        deleteButton.classList.add('btn');
-                        deleteButton.onclick = () => deleteComment(doc.id);
-                        actions.appendChild(deleteButton);
-                    }
-                    
-                    commentElement.appendChild(actions);
-
-                    // Load replies
-                    const repliesList = document.createElement('div');
-                    repliesList.style.marginLeft = "20px";
-                    commentElement.appendChild(repliesList);
-
-                    const replies = repliesMap.get(doc.id) || [];
-                    replies.forEach((reply) => {
-                        const replyElement = document.createElement('div');
-                        replyElement.classList.add('comment-box');
-                        replyElement.textContent = reply.text;
-                        repliesList.appendChild(replyElement);
-                    });
-
-                    commentsList.appendChild(commentElement);
+                    comments.push({ id: doc.id, data: doc.data() });
                 });
-            }).catch((error) => {
-                console.error("Error loading comments and replies: ", error);
+
+                return { comments, repliesMap };
             });
+        }
+
+        function renderComments({ comments, repliesMap }) {
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = '';
+
+            const user = firebase.auth().currentUser;
+
+            comments.forEach((doc) => {
+                const comment = doc.data;
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment-box');
+
+                const commentText = document.createElement('p');
+                commentText.textContent = comment.text;
+                commentElement.appendChild(commentText);
+
+                const actions = document.createElement('div');
+                const replyButton = document.createElement('button');
+                replyButton.textContent = "Reply";
+                replyButton.classList.add('btn');
+                replyButton.onclick = () => replyToComment(doc.id);
+                actions.appendChild(replyButton);
+
+                if (user && user.uid === comment.authorId) {
+                    const editButton = document.createElement('button');
+                    editButton.textContent = "Edit";
+                    editButton.classList.add('btn');
+                    editButton.onclick = () => editComment(doc.id, comment.text);
+                    actions.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = "Delete";
+                    deleteButton.classList.add('btn');
+                    deleteButton.onclick = () => deleteComment(doc.id);
+                    actions.appendChild(deleteButton);
+                }
+
+                commentElement.appendChild(actions);
+
+                // Load replies
+                const repliesList = document.createElement('div');
+                repliesList.style.marginLeft = "20px";
+                commentElement.appendChild(repliesList);
+
+                const replies = repliesMap.get(doc.id) || [];
+                replies.forEach((reply) => {
+                    const replyElement = document.createElement('div');
+                    replyElement.classList.add('comment-box');
+                    replyElement.textContent = reply.text;
+                    repliesList.appendChild(replyElement);
+                });
+
+                commentsList.appendChild(commentElement);
+            });
+        }
+
+        function loadComments() {
+            return fetchCommentsData()
+                .then(renderComments)
+                .catch((error) => {
+                    console.error("Error loading comments and replies: ", error);
+                });
         }
 
         let isInitialLoad = true;
