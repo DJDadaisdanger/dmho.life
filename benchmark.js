@@ -25,7 +25,7 @@ const mockFirestore = {
                 orderBy: (field, direction) => ({
                     get: async () => {
                         getCalls++;
-                        return { forEach: (callback) => {} };
+                        return { forEach: () => {} };
                     }
                 })
             })
