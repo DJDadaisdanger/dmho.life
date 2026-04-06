@@ -53,15 +53,23 @@
         <div id="comments-list"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="firebase-init.js"></script>
 
     <script>
+        firebase.auth().signInAnonymously().catch((error) => {
+            console.error("Error signing in anonymously: ", error);
+        });
+
         fetch('research.md')
             .then(response => response.text())
             .then(text => {
-                document.getElementById('content').innerHTML = marked.parse(text);
+                const dirtyHTML = marked.parse(text);
+                const cleanHTML = DOMPurify.sanitize(dirtyHTML);
+                document.getElementById('content').innerHTML = cleanHTML;
             });
         
         function showCommentBox() {
@@ -72,9 +80,11 @@
         function submitComment() {
             const commentInput = document.getElementById('comment-input');
             const commentText = commentInput.value;
-            if (commentText.trim() !== '') {
+            const user = firebase.auth().currentUser;
+            if (commentText.trim() !== '' && user) {
                 commentsCollection.add({
                     text: commentText,
+                    authorId: user.uid,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 })
                 .then(() => {
@@ -113,10 +123,12 @@
 
         function replyToComment(id) {
             const replyText = prompt("Write your reply:");
-            if (replyText && replyText.trim() !== '') {
+            const user = firebase.auth().currentUser;
+            if (replyText && replyText.trim() !== '' && user) {
                 const reply = {
                     text: replyText,
-                    timestamp: new Date()
+                    authorId: user.uid,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 commentsCollection.doc(id).collection("replies").add(reply)
                 .then(() => {
@@ -132,10 +144,11 @@
             const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
             const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
 
-            Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
+            return Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
                 const commentsList = document.getElementById('comments-list');
                 commentsList.innerHTML = '';
 
+                const user = firebase.auth().currentUser;
                 const repliesMap = new Map();
                 repliesSnapshot.forEach((replyDoc) => {
                     const reply = replyDoc.data();
@@ -162,17 +175,19 @@
                     replyButton.onclick = () => replyToComment(doc.id);
                     actions.appendChild(replyButton);
                     
-                    const editButton = document.createElement('button');
-                    editButton.textContent = "Edit";
-                    editButton.classList.add('btn');
-                    editButton.onclick = () => editComment(doc.id, comment.text);
-                    actions.appendChild(editButton);
+                    if (user && user.uid === comment.authorId) {
+                        const editButton = document.createElement('button');
+                        editButton.textContent = "Edit";
+                        editButton.classList.add('btn');
+                        editButton.onclick = () => editComment(doc.id, comment.text);
+                        actions.appendChild(editButton);
 
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = "Delete";
-                    deleteButton.classList.add('btn');
-                    deleteButton.onclick = () => deleteComment(doc.id);
-                    actions.appendChild(deleteButton);
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = "Delete";
+                        deleteButton.classList.add('btn');
+                        deleteButton.onclick = () => deleteComment(doc.id);
+                        actions.appendChild(deleteButton);
+                    }
                     
                     commentElement.appendChild(actions);
 
@@ -196,7 +211,13 @@
             });
         }
 
-        window.onload = loadComments;
+        let isInitialLoad = true;
+        firebase.auth().onAuthStateChanged((user) => {
+            if (isInitialLoad) {
+                loadComments();
+                isInitialLoad = false;
+            }
+        });
     </script>
 </body>
 </html>
