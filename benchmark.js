@@ -1,4 +1,3 @@
-
 let getCalls = 0;
 
 const mockFirestore = {
@@ -85,9 +84,15 @@ async function loadCommentsOptimized() {
         results.push({ commentId, text: comment.text, replies });
     });
 
-    console.log(`Total Firestore get() calls: ${getCalls}`);
-    console.log(`Total comments loaded: ${results.length}`);
-    console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
+    return { results, getCalls };
 }
 
-loadCommentsOptimized();
+if (require.main === module) {
+    loadCommentsOptimized().then(({ results, getCalls }) => {
+        console.log(`Total Firestore get() calls: ${getCalls}`);
+        console.log(`Total comments loaded: ${results.length}`);
+        console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
+    });
+}
+
+module.exports = { loadCommentsOptimized, db };
