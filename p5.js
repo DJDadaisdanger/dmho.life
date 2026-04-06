@@ -84501,16 +84501,20 @@
                       var vertString = tokens[vertexTokens[tokenInd]];
                       var vertIndex = 0;
 
-                      // TODO: Faces can technically use negative numbers to refer to the
-                      // previous nth vertex. I haven't seen this used in practice, but
-                      // it might be good to implement this in the future.
-
                       if (indexedVerts[vertString] !== undefined) {
                         vertIndex = indexedVerts[vertString];
                       } else {
                         var vertParts = vertString.split('/');
                         for (var i = 0; i < vertParts.length; i++) {
-                          vertParts[i] = parseInt(vertParts[i]) - 1;
+                          var v = parseInt(vertParts[i]);
+                          if (v < 0) {
+                            if (i === 0) v = loadedVerts.v.length + v;
+                            else if (i === 1) v = loadedVerts.vt.length + v;
+                            else if (i === 2) v = loadedVerts.vn.length + v;
+                          } else {
+                            v = v - 1;
+                          }
+                          vertParts[i] = v;
                         }
 
                         vertIndex = indexedVerts[vertString] = model.vertices.length;
