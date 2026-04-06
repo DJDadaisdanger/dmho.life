@@ -25077,9 +25077,6 @@
 
             var subblock_size = code_stream[p++];
 
-            // TODO(deanm): Would using a TypedArray be any faster?  At least it would
-            // solve the fast mode / backing store uncertainty.
-            // var code_table = Array(4096);
             var code_table = new Int32Array(4096); // Can be signed, we only use 20 bits.
 
             var prev_code = null; // Track code-1.
