@@ -28,13 +28,23 @@
             border: 1px solid #555;
         }
         .btn {
-            padding: 10px 15px;
-            background-color: #00ffdd;
-            color: black;
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #00e5ff;
+            color: #000012;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.3s ease;
             border: none;
             cursor: pointer;
             margin-right: 10px;
             font-family: monospace;
+        }
+        .btn:hover {
+            background-color: #ffffff;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -57,6 +67,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/__/firebase/init.js"></script>
     <script src="firebase-init.js"></script>
 
     <script>
@@ -90,7 +101,6 @@
                 .then(() => {
                     commentInput.value = '';
                     showCommentBox();
-                    loadComments();
                 })
                 .catch(error => {
                     console.error("Error adding document: ", error);
@@ -99,9 +109,7 @@
         }
 
         function deleteComment(id) {
-            commentsCollection.doc(id).delete().then(() => {
-                loadComments();
-            }).catch((error) => {
+            commentsCollection.doc(id).delete().catch((error) => {
                 console.error("Error removing document: ", error);
             });
         }
@@ -111,9 +119,6 @@
             if (newText && newText.trim() !== '') {
                 commentsCollection.doc(id).update({
                     text: newText
-                })
-                .then(() => {
-                    loadComments();
                 })
                 .catch((error) => {
                     console.error("Error updating document: ", error);
@@ -131,91 +136,100 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 commentsCollection.doc(id).collection("replies").add(reply)
-                .then(() => {
-                    loadComments();
-                })
                 .catch((error) => {
                     console.error("Error adding reply: ", error);
                 });
             }
         }
 
-        function loadComments() {
-            const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
-            const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
+        let localComments = [];
+        let localRepliesMap = new Map();
 
-            return Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
-                const commentsList = document.getElementById('comments-list');
-                commentsList.innerHTML = '';
+        function renderComments() {
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = '';
+            const user = firebase.auth().currentUser;
 
-                const user = firebase.auth().currentUser;
-                const repliesMap = new Map();
-                repliesSnapshot.forEach((replyDoc) => {
+            localComments.forEach((doc) => {
+                const comment = doc.data();
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment-box');
+
+                const commentText = document.createElement('p');
+                commentText.textContent = comment.text;
+                commentElement.appendChild(commentText);
+
+                const actions = document.createElement('div');
+                const replyButton = document.createElement('button');
+                replyButton.textContent = "Reply";
+                replyButton.classList.add('btn');
+                replyButton.onclick = () => replyToComment(doc.id);
+                actions.appendChild(replyButton);
+
+                if (user && user.uid === comment.authorId) {
+                    const editButton = document.createElement('button');
+                    editButton.textContent = "Edit";
+                    editButton.classList.add('btn');
+                    editButton.onclick = () => editComment(doc.id, comment.text);
+                    actions.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = "Delete";
+                    deleteButton.classList.add('btn');
+                    deleteButton.onclick = () => deleteComment(doc.id);
+                    actions.appendChild(deleteButton);
+                }
+
+                commentElement.appendChild(actions);
+
+                // Load replies
+                const repliesList = document.createElement('div');
+                repliesList.style.marginLeft = "20px";
+                commentElement.appendChild(repliesList);
+
+                const replies = localRepliesMap.get(doc.id) || [];
+                replies.forEach((reply) => {
+                    const replyElement = document.createElement('div');
+                    replyElement.classList.add('comment-box');
+                    replyElement.textContent = reply.text;
+                    repliesList.appendChild(replyElement);
+                });
+
+                commentsList.appendChild(commentElement);
+            });
+        }
+
+        function initListeners() {
+            commentsCollection.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                localComments = snapshot.docs;
+                renderComments();
+            }, (error) => {
+                console.error("Error listening to comments: ", error);
+            });
+
+            db.collectionGroup("replies").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+                localRepliesMap.clear();
+                snapshot.forEach((replyDoc) => {
                     const reply = replyDoc.data();
                     const parentId = replyDoc.ref.parent.parent.id;
-                    if (!repliesMap.has(parentId)) {
-                        repliesMap.set(parentId, []);
+                    if (!localRepliesMap.has(parentId)) {
+                        localRepliesMap.set(parentId, []);
                     }
-                    repliesMap.get(parentId).push(reply);
+                    localRepliesMap.get(parentId).push(reply);
                 });
-
-                commentsSnapshot.forEach((doc) => {
-                    const comment = doc.data();
-                    const commentElement = document.createElement('div');
-                    commentElement.classList.add('comment-box');
-                    
-                    const commentText = document.createElement('p');
-                    commentText.textContent = comment.text;
-                    commentElement.appendChild(commentText);
-
-                    const actions = document.createElement('div');
-                    const replyButton = document.createElement('button');
-                    replyButton.textContent = "Reply";
-                    replyButton.classList.add('btn');
-                    replyButton.onclick = () => replyToComment(doc.id);
-                    actions.appendChild(replyButton);
-                    
-                    if (user && user.uid === comment.authorId) {
-                        const editButton = document.createElement('button');
-                        editButton.textContent = "Edit";
-                        editButton.classList.add('btn');
-                        editButton.onclick = () => editComment(doc.id, comment.text);
-                        actions.appendChild(editButton);
-
-                        const deleteButton = document.createElement('button');
-                        deleteButton.textContent = "Delete";
-                        deleteButton.classList.add('btn');
-                        deleteButton.onclick = () => deleteComment(doc.id);
-                        actions.appendChild(deleteButton);
-                    }
-                    
-                    commentElement.appendChild(actions);
-
-                    // Load replies
-                    const repliesList = document.createElement('div');
-                    repliesList.style.marginLeft = "20px";
-                    commentElement.appendChild(repliesList);
-
-                    const replies = repliesMap.get(doc.id) || [];
-                    replies.forEach((reply) => {
-                        const replyElement = document.createElement('div');
-                        replyElement.classList.add('comment-box');
-                        replyElement.textContent = reply.text;
-                        repliesList.appendChild(replyElement);
-                    });
-
-                    commentsList.appendChild(commentElement);
-                });
-            }).catch((error) => {
-                console.error("Error loading comments and replies: ", error);
+                renderComments();
+            }, (error) => {
+                console.error("Error listening to replies: ", error);
             });
         }
 
         let isInitialLoad = true;
         firebase.auth().onAuthStateChanged((user) => {
             if (isInitialLoad) {
-                loadComments();
+                initListeners();
                 isInitialLoad = false;
+            } else {
+                renderComments(); // Re-render if auth state changes (e.g. login)
             }
         });
     </script>
