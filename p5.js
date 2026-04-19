@@ -25108,9 +25108,6 @@
               cur >>= cur_code_size;
               cur_shift -= cur_code_size;
 
-              // TODO(deanm): Maybe should check that the first code was a clear code,
-              // at least this is what you're supposed to do.  But actually our encoder
-              // now doesn't emit a clear code first anyway.
               if (code === clear_code) {
                 // We don't actually have to clear the table.  This could be a good idea
                 // for greater error checking, but we don't really do any anyway.  We
@@ -25125,6 +25122,21 @@
                 continue;
               } else if (code === eoi_code) {
                 break;
+              }
+
+              // TODO(deanm): We should never really get here, we should have received
+              // a clear code at the start of the stream.  But some encoders seem to
+              // mess this up.  It should just be dictionary[code]... but doing that
+              // without a clear code means we haven't initialized the dictionary
+              // TODO(deanm): Maybe should check that the first code was a clear code,
+              // at least for some debug assert.
+              if (prev_code === null) {
+                if (code >= clear_code) {
+                  console.warn('Warning, not a clear code and not in dictionary');
+                }
+                output[op++] = code;
+                prev_code = code;
+                continue;
               }
 
               // We have a similar situation as the decoder, where we want to store
