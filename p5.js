@@ -16121,11 +16121,6 @@
               return from(value, encodingOrOffset, length);
             };
 
-            // Note: Change prototype *after* Buffer.from is defined to workaround Chrome bug:
-            // https://github.com/feross/buffer/pull/148
-            Object.setPrototypeOf(Buffer.prototype, Uint8Array.prototype);
-            Object.setPrototypeOf(Buffer, Uint8Array);
-
             function assertSize(size) {
               if (typeof size !== 'number') {
                 throw new TypeError('"size" argument must be of type number');
@@ -16159,6 +16154,11 @@
             Buffer.alloc = function(size, fill, encoding) {
               return alloc(size, fill, encoding);
             };
+
+            // Note: Change prototype *after* Buffer.alloc is defined to workaround Chrome bug:
+            // https://github.com/feross/buffer/pull/148
+            Object.setPrototypeOf(Buffer.prototype, Uint8Array.prototype);
+            Object.setPrototypeOf(Buffer, Uint8Array);
 
             function allocUnsafe(size) {
               assertSize(size);
