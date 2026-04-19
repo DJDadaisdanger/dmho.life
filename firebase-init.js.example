@@ -1,0 +1,22 @@
+// Example Firebase configuration for local development.
+// If you are running locally without Firebase Hosting, uncomment and fill in your details below,
+// and copy this file to `firebase-init.js`. Alternatively, `research.html` expects `/__/firebase/init.js`
+// which is provided automatically by Firebase Hosting.
+
+/*
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+*/
+
+// Initialize Firestore globals
+const db = firebase.firestore();
+const commentsCollection = db.collection("comments");
