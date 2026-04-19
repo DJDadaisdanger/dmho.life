@@ -76,12 +76,12 @@ async function loadCommentsOptimized() {
         repliesMap.get(parentId).push(reply);
     });
 
-    const results = [];
+    const results = new Map();
     commentsSnapshot.forEach((doc) => {
         const comment = doc.data();
         const commentId = doc.id;
         const replies = repliesMap.get(commentId) || [];
-        results.push({ commentId, text: comment.text, replies });
+        results.set(commentId, { commentId, text: comment.text, replies });
     });
 
     return { results, getCalls };
@@ -90,8 +90,8 @@ async function loadCommentsOptimized() {
 if (require.main === module) {
     loadCommentsOptimized().then(({ results, getCalls }) => {
         console.log(`Total Firestore get() calls: ${getCalls}`);
-        console.log(`Total comments loaded: ${results.length}`);
-        console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
+        console.log(`Total comments loaded: ${results.size}`);
+        console.log(`Example comment_1 replies count: ${results.get('comment_1').replies.length}`);
     });
 }
 
