@@ -2,7 +2,7 @@ let getCalls = 0;
 
 const mockFirestore = {
     collection: (name) => ({
-        orderBy: (field, direction) => ({
+        orderBy: (_field, _direction) => ({
             get: async () => {
                 getCalls++;
                 if (name === 'comments') {
@@ -22,7 +22,7 @@ const mockFirestore = {
         }),
         doc: (id) => ({
             collection: (subName) => ({
-                orderBy: (field, direction) => ({
+                orderBy: (_field, _direction) => ({
                     get: async () => {
                         getCalls++;
                         return { forEach: () => {} };
@@ -32,7 +32,7 @@ const mockFirestore = {
         })
     }),
     collectionGroup: (name) => ({
-        orderBy: (field, direction) => ({
+        orderBy: (_field, _direction) => ({
             get: async () => {
                 getCalls++;
                 if (name === 'replies') {
