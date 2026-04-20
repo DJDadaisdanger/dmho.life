@@ -32720,6 +32720,19 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+
+                var langTags = [];
+                if (format === 1) {
+                  var langTagCountOffset = start + 6 + count * 12;
+                  var p2 = new parse.Parser(data, langTagCountOffset);
+                  var langTagCount = p2.parseUShort();
+                  for (var i = 0; i < langTagCount; i++) {
+                    var length = p2.parseUShort();
+                    var offset = p2.parseUShort();
+                    langTags.push(decode.UTF16(data, stringOffset + offset, length));
+                  }
+                }
+
                 for (var i = 0; i < count; i++) {
                   var platformID = p.parseUShort();
                   var encodingID = p.parseUShort();
@@ -32728,7 +32741,13 @@
                   var property = nameTableNames[nameID] || nameID;
                   var byteLength = p.parseUShort();
                   var offset = p.parseUShort();
-                  var language = getLanguageCode(platformID, languageID, ltag);
+                  var language;
+                  if (format === 1 && languageID >= 0x8000 && languageID - 0x8000 < langTags.length) {
+                    language = langTags[languageID - 0x8000];
+                  } else {
+                    language = getLanguageCode(platformID, languageID, ltag);
+                  }
+
                   var encoding = getEncoding(platformID, encodingID, languageID);
                   if (encoding !== undefined && language !== undefined) {
                     var text = void 0;
@@ -32752,12 +32771,6 @@
                       translations[language] = text;
                     }
                   }
-                }
-
-                var langTagCount = 0;
-                if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
                 }
 
                 return name;
