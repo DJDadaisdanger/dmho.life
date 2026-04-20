@@ -30092,8 +30092,9 @@
                   commands = font.hinting.getCommands(hPoints);
                   x = Math.round(x);
                   y = Math.round(y);
-                  // TODO in case of hinting xyScaling is not yet supported
-                  xScale = yScale = 1;
+                  var scale = 1 / this.path.unitsPerEm * fontSize;
+                  xScale = xScale !== undefined ? xScale / scale : 1;
+                  yScale = yScale !== undefined ? yScale / scale : 1;
                 } else {
                   commands = this.path.commands;
                   var scale = 1 / this.path.unitsPerEm * fontSize;
