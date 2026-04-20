@@ -90611,10 +90611,15 @@
               this.directionalLightSpecularColors
             );
 
-            // TODO: sum these here...
-            var ambientLightCount = this.ambientLightColors.length / 3;
-            fillShader.setUniform('uAmbientLightCount', ambientLightCount);
-            fillShader.setUniform('uAmbientColor', this.ambientLightColors);
+            // sum ambient light colors here
+            var ambientColor = [0, 0, 0];
+            for (var i = 0; i < this.ambientLightColors.length; i += 3) {
+              ambientColor[0] += this.ambientLightColors[i];
+              ambientColor[1] += this.ambientLightColors[i + 1];
+              ambientColor[2] += this.ambientLightColors[i + 2];
+            }
+            fillShader.setUniform('uAmbientLightCount', 1);
+            fillShader.setUniform('uAmbientColor', ambientColor);
 
             var spotLightCount = this.spotLightDiffuseColors.length / 3;
             fillShader.setUniform('uSpotLightCount', spotLightCount);
