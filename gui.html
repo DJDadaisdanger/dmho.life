@@ -155,7 +155,10 @@
               steer.limit(this.maxforce);
               return steer;
           } else {
-              return new Vector(0, 0);
+              if (!Vector.zero) {
+                  Vector.zero = new Vector(0, 0);
+              }
+              return Vector.zero;
           }
       };
 
