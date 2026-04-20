@@ -25083,6 +25083,7 @@
             var code_table = new Int32Array(4096); // Can be signed, we only use 20 bits.
 
             var prev_code = null; // Track code-1.
+            var is_first_code = true;
 
             while (true) {
               // Read up to two bytes, making sure we always 12-bits for max sized code.
@@ -25108,9 +25109,13 @@
               cur >>= cur_code_size;
               cur_shift -= cur_code_size;
 
-              // TODO(deanm): Maybe should check that the first code was a clear code,
-              // at least this is what you're supposed to do.  But actually our encoder
-              // now doesn't emit a clear code first anyway.
+              if (is_first_code) {
+                is_first_code = false;
+                if (code !== clear_code) {
+                  console.log('Warning, first code was not a clear code.');
+                }
+              }
+
               if (code === clear_code) {
                 // We don't actually have to clear the table.  This could be a good idea
                 // for greater error checking, but we don't really do any anyway.  We
