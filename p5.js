@@ -32712,7 +32712,6 @@
               }
 
               // Parse the naming `name` table.
-              // FIXME: Format 1 additional fields are not supported yet.
               // ltag is the content of the `ltag' table, such as ['en', 'zh-Hans', 'de-CH-1904'].
               function parseNameTable(data, start, ltag) {
                 var name = {};
@@ -32720,6 +32719,21 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+
+                var langTags = [];
+                if (format === 1) {
+                  // Jump ahead to parse the language tags, which follow the name records
+                  var oldOffset = p.relativeOffset;
+                  p.relativeOffset += count * 12; // Each name record is 12 bytes
+                  var langTagCount = p.parseUShort();
+                  for (var i = 0; i < langTagCount; i++) {
+                    var length = p.parseUShort();
+                    var offset = p.parseUShort();
+                    langTags.push(decode.UTF16(data, stringOffset + offset, length));
+                  }
+                  p.relativeOffset = oldOffset;
+                }
+
                 for (var i = 0; i < count; i++) {
                   var platformID = p.parseUShort();
                   var encodingID = p.parseUShort();
@@ -32728,7 +32742,14 @@
                   var property = nameTableNames[nameID] || nameID;
                   var byteLength = p.parseUShort();
                   var offset = p.parseUShort();
-                  var language = getLanguageCode(platformID, languageID, ltag);
+
+                  var language;
+                  if (format === 1 && languageID >= 0x8000 && languageID < 0x8000 + langTags.length) {
+                    language = langTags[languageID - 0x8000];
+                  } else {
+                    language = getLanguageCode(platformID, languageID, ltag);
+                  }
+
                   var encoding = getEncoding(platformID, encodingID, languageID);
                   if (encoding !== undefined && language !== undefined) {
                     var text = void 0;
@@ -32754,10 +32775,9 @@
                   }
                 }
 
-                var langTagCount = 0;
                 if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
+                  // Skip over the lang tags we already parsed
+                  p.relativeOffset += 2 + langTags.length * 4;
                 }
 
                 return name;
