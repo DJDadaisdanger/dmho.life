@@ -70,10 +70,12 @@ async function loadCommentsOptimized() {
     repliesSnapshot.forEach((replyDoc) => {
         const reply = replyDoc.data();
         const parentId = replyDoc.ref.parent.parent.id;
-        if (!repliesMap.has(parentId)) {
-            repliesMap.set(parentId, []);
+        let replies = repliesMap.get(parentId);
+        if (!replies) {
+            replies = [];
+            repliesMap.set(parentId, replies);
         }
-        repliesMap.get(parentId).push(reply);
+        replies.push(reply);
     });
 
     const results = [];
