@@ -84501,9 +84501,19 @@
                       var vertString = tokens[vertexTokens[tokenInd]];
                       var vertIndex = 0;
 
-                      // TODO: Faces can technically use negative numbers to refer to the
-                      // previous nth vertex. I haven't seen this used in practice, but
-                      // it might be good to implement this in the future.
+                      // Faces can technically use negative numbers to refer to the
+                      // previous nth vertex.
+                      if (vertString.indexOf('-') !== -1) {
+                        var vParts = vertString.split('/');
+                        for (var i = 0; i < vParts.length; i++) {
+                          var val = parseInt(vParts[i], 10);
+                          if (val < 0) {
+                            var listLength = i === 0 ? loadedVerts.v.length : (i === 1 ? loadedVerts.vt.length : loadedVerts.vn.length);
+                            vParts[i] = (listLength + val + 1).toString();
+                          }
+                        }
+                        vertString = vParts.join('/');
+                      }
 
                       if (indexedVerts[vertString] !== undefined) {
                         vertIndex = indexedVerts[vertString];
