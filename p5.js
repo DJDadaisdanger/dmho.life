@@ -32720,16 +32720,52 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+
+                // To support format 1, we must read NameRecords first, then LangTagRecords.
+                // We'll store them temporarily and process later.
+                var nameRecords = [];
                 for (var i = 0; i < count; i++) {
-                  var platformID = p.parseUShort();
-                  var encodingID = p.parseUShort();
-                  var languageID = p.parseUShort();
-                  var nameID = p.parseUShort();
+                  nameRecords.push({
+                    platformID: p.parseUShort(),
+                    encodingID: p.parseUShort(),
+                    languageID: p.parseUShort(),
+                    nameID: p.parseUShort(),
+                    byteLength: p.parseUShort(),
+                    offset: p.parseUShort()
+                  });
+                }
+
+                var langTags = [];
+                if (format === 1) {
+                  var langTagCount = p.parseUShort();
+                  for (var j = 0; j < langTagCount; j++) {
+                    var length = p.parseUShort();
+                    var langTagOffset = p.parseUShort();
+                    // Language tags are UTF-16BE encoded
+                    var tag = decode.UTF16(data, stringOffset + langTagOffset, length);
+                    langTags.push(tag);
+                  }
+                }
+
+                for (var i = 0; i < nameRecords.length; i++) {
+                  var record = nameRecords[i];
+                  var platformID = record.platformID;
+                  var encodingID = record.encodingID;
+                  var languageID = record.languageID;
+                  var nameID = record.nameID;
+                  var byteLength = record.byteLength;
+                  var offset = record.offset;
                   var property = nameTableNames[nameID] || nameID;
-                  var byteLength = p.parseUShort();
-                  var offset = p.parseUShort();
-                  var language = getLanguageCode(platformID, languageID, ltag);
+
+                  var language;
+                  if (format === 1 && languageID >= 0x8000) {
+                    language = langTags[languageID - 0x8000];
+                  } else {
+                    language = getLanguageCode(platformID, languageID, ltag);
+                  }
+
                   var encoding = getEncoding(platformID, encodingID, languageID);
+
                   if (encoding !== undefined && language !== undefined) {
                     var text = void 0;
                     if (encoding === utf16) {
@@ -32752,12 +32788,6 @@
                       translations[language] = text;
                     }
                   }
-                }
-
-                var langTagCount = 0;
-                if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
                 }
 
                 return name;
