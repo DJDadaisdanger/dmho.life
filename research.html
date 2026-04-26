@@ -159,6 +159,8 @@
                     repliesMap.get(parentId).push(reply);
                 });
 
+                const commentsFragment = document.createDocumentFragment();
+
                 commentsSnapshot.forEach((doc) => {
                     const comment = doc.data();
                     const commentElement = document.createElement('div');
@@ -197,15 +199,19 @@
                     commentElement.appendChild(repliesList);
 
                     const replies = repliesMap.get(doc.id) || [];
+                    const repliesFragment = document.createDocumentFragment();
                     replies.forEach((reply) => {
                         const replyElement = document.createElement('div');
                         replyElement.classList.add('comment-box');
                         replyElement.textContent = reply.text;
-                        repliesList.appendChild(replyElement);
+                        repliesFragment.appendChild(replyElement);
                     });
+                    repliesList.appendChild(repliesFragment);
 
-                    commentsList.appendChild(commentElement);
+                    commentsFragment.appendChild(commentElement);
                 });
+
+                commentsList.appendChild(commentsFragment);
             }).catch((error) => {
                 console.error("Error loading comments and replies: ", error);
             });
