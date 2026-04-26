@@ -90914,9 +90914,6 @@
            * @param {String} vertSrc source code for the vertex shader (as a string)
            * @param {String} fragSrc source code for the fragment shader (as a string)
            */ _main.default.Shader = function(renderer, vertSrc, fragSrc) {
-            // TODO: adapt this to not take ids, but rather,
-            // to take the source for a vertex and fragment shader
-            // to enable custom shaders at some later date
             this._renderer = renderer;
             this._vertSrc = vertSrc;
             this._fragSrc = fragSrc;
