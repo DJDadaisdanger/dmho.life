@@ -212,11 +212,19 @@
         const card = document.querySelector('.card');
 
         let animationFrameId = null;
+        let cardRect = cardContainer.getBoundingClientRect();
+
+        const updateCardRect = () => {
+            cardRect = cardContainer.getBoundingClientRect();
+        };
+
+        window.addEventListener('resize', updateCardRect, { passive: true });
+        window.addEventListener('scroll', updateCardRect, { passive: true });
 
         cardContainer.addEventListener('mousemove', (e) => {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(() => {
-                const { width, height, left, top } = cardContainer.getBoundingClientRect();
+                const { width, height, left, top } = cardRect;
                 const x = e.clientX - left;
                 const y = e.clientY - top;
                 const rotateX = (y / height - 0.5) * -25;
