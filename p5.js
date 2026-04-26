@@ -91197,8 +91197,37 @@
           };
 
           _main.default.Shader.prototype.unbindTextures = function() {
-            // TODO: migrate stuff from material.js here
-            // - OR - have material.js define this function
+            var gl = this._renderer.GL;
+            var _iteratorNormalCompletion = true;
+            var _didIteratorError = false;
+            var _iteratorError = undefined;
+            try {
+              for (
+                var _iterator = this.samplers[Symbol.iterator](), _step;
+                !(_iteratorNormalCompletion = (_step = _iterator.next()).done);
+                _iteratorNormalCompletion = true
+              ) {
+                var uniform = _step.value;
+                var tex = uniform.texture;
+                if (tex !== undefined) {
+                  gl.activeTexture(gl.TEXTURE0 + uniform.samplerIndex);
+                  tex.unbindTexture();
+                }
+              }
+            } catch (err) {
+              _didIteratorError = true;
+              _iteratorError = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion && _iterator.return != null) {
+                  _iterator.return();
+                }
+              } finally {
+                if (_didIteratorError) {
+                  throw _iteratorError;
+                }
+              }
+            }
           };
 
           _main.default.Shader.prototype._setMatrixUniforms = function() {
