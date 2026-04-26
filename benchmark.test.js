@@ -28,3 +28,26 @@ test('each comment has the correct number of replies', async (t) => {
         assert.strictEqual(comment.replies.length, 2, `Comment ${comment.commentId} should have 2 replies`);
     });
 });
+
+test('handles comments without replies correctly', async (t) => {
+    const { db } = require('./benchmark.js');
+    const originalCollectionGroup = db.collectionGroup;
+
+    db.collectionGroup = (name) => ({
+        orderBy: () => ({
+            get: async () => ({
+                forEach: () => {}
+            })
+        })
+    });
+
+    try {
+        const { results } = await loadCommentsOptimized();
+        assert.strictEqual(results.length, 5, 'Should load 5 comments');
+        results.forEach(comment => {
+            assert.deepStrictEqual(comment.replies, [], `Comment ${comment.commentId} should have an empty replies array`);
+        });
+    } finally {
+        db.collectionGroup = originalCollectionGroup;
+    }
+});
