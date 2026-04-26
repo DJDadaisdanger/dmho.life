@@ -20,25 +20,29 @@
       var mouseX = -1000;
       var mouseY = -1000;
 
+      var canvasRect = canvas.getBoundingClientRect();
+      var updateRect = function() {
+          canvasRect = canvas.getBoundingClientRect();
+      };
+      window.addEventListener('resize', updateRect, {passive: true});
+      window.addEventListener('scroll', updateRect, {passive: true});
+
       canvas.addEventListener('mousemove', function(e) {
-          var rect = canvas.getBoundingClientRect();
-          mouseX = e.clientX - rect.left;
-          mouseY = e.clientY - rect.top;
+          mouseX = e.clientX - canvasRect.left;
+          mouseY = e.clientY - canvasRect.top;
       });
 
       canvas.addEventListener('touchmove', function(e) {
           if (e.touches.length > 0) {
-              var rect = canvas.getBoundingClientRect();
-              mouseX = e.touches[0].clientX - rect.left;
-              mouseY = e.touches[0].clientY - rect.top;
+              mouseX = e.touches[0].clientX - canvasRect.left;
+              mouseY = e.touches[0].clientY - canvasRect.top;
               e.preventDefault();
           }
       }, {passive: false});
       canvas.addEventListener('touchstart', function(e) {
           if (e.touches.length > 0) {
-              var rect = canvas.getBoundingClientRect();
-              mouseX = e.touches[0].clientX - rect.left;
-              mouseY = e.touches[0].clientY - rect.top;
+              mouseX = e.touches[0].clientX - canvasRect.left;
+              mouseY = e.touches[0].clientY - canvasRect.top;
           }
       }, {passive: false});
       canvas.addEventListener('touchend', function(e) {
