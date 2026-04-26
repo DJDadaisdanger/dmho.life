@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 let getCalls = 0;
 
 const mockFirestore = {
@@ -87,7 +89,7 @@ async function loadCommentsOptimized() {
     return { results, getCalls };
 }
 
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
     loadCommentsOptimized().then(({ results, getCalls }) => {
         console.log(`Total Firestore get() calls: ${getCalls}`);
         console.log(`Total comments loaded: ${results.length}`);
@@ -95,4 +97,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { loadCommentsOptimized, db };
+export { loadCommentsOptimized, db };

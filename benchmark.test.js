@@ -1,6 +1,6 @@
-const test = require('node:test');
-const assert = require('node:assert');
-const { loadCommentsOptimized } = require('./benchmark.js');
+import test from 'node:test';
+import assert from 'node:assert';
+import { loadCommentsOptimized } from './benchmark.js';
 
 test('loadCommentsOptimized returns correct results and call count', async (t) => {
     const { results, getCalls } = await loadCommentsOptimized();
