@@ -57,10 +57,10 @@ const mockFirestore = {
 };
 
 const db = mockFirestore;
-const commentsCollection = db.collection('comments');
 
 async function loadCommentsOptimized() {
     getCalls = 0;
+    const commentsCollection = db.collection('comments');
     const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
     const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
 
