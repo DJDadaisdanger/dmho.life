@@ -66911,6 +66911,19 @@
             if (p5Image === undefined) {
               p5Image = this;
             }
+            if (
+              p5Image instanceof Array ||
+              p5Image instanceof Uint8Array ||
+              p5Image instanceof Uint8ClampedArray ||
+              (typeof Array.isArray === 'function' && Array.isArray(p5Image))
+            ) {
+              this.loadPixels();
+              for (var i = 0; i < p5Image.length; i++) {
+                this.pixels[i * 4 + 3] = p5Image[i];
+              }
+              this.updatePixels();
+              return;
+            }
             var currBlend = this.drawingContext.globalCompositeOperation;
 
             var scaleFactor = 1;
