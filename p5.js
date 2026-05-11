@@ -92001,7 +92001,18 @@
               return this._textFont._textWidth(s, this._textSize);
             }
 
-            return 0; // TODO: error
+            if (!this._2dContext) {
+              var c = document.createElement('canvas');
+              this._2dContext = c.getContext('2d');
+            }
+
+            var font = this._textFont;
+            this._2dContext.font = ''
+              .concat(this._textStyle || 'normal', ' ')
+              .concat(this._textSize || 12, 'px ')
+              .concat(font || 'sans-serif');
+
+            return this._2dContext.measureText(s).width;
           };
 
           // rendering constants
