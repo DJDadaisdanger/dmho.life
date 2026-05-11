@@ -58,6 +58,7 @@ const mockFirestore = {
 
 const db = mockFirestore;
 const commentsCollection = db.collection('comments');
+const { buildRepliesMap } = require('./utils.js');
 
 async function loadCommentsOptimized() {
     getCalls = 0;
@@ -66,15 +67,7 @@ async function loadCommentsOptimized() {
 
     const [commentsSnapshot, repliesSnapshot] = await Promise.all([commentsQuery, repliesQuery]);
 
-    const repliesMap = new Map();
-    repliesSnapshot.forEach((replyDoc) => {
-        const reply = replyDoc.data();
-        const parentId = replyDoc.ref.parent.parent.id;
-        if (!repliesMap.has(parentId)) {
-            repliesMap.set(parentId, []);
-        }
-        repliesMap.get(parentId).push(reply);
-    });
+    const repliesMap = buildRepliesMap(repliesSnapshot);
 
     const results = [];
     commentsSnapshot.forEach((doc) => {
