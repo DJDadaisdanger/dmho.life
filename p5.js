@@ -32712,7 +32712,6 @@
               }
 
               // Parse the naming `name` table.
-              // FIXME: Format 1 additional fields are not supported yet.
               // ltag is the content of the `ltag' table, such as ['en', 'zh-Hans', 'de-CH-1904'].
               function parseNameTable(data, start, ltag) {
                 var name = {};
@@ -32720,14 +32719,40 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+                var nameRecords = [];
                 for (var i = 0; i < count; i++) {
-                  var platformID = p.parseUShort();
-                  var encodingID = p.parseUShort();
-                  var languageID = p.parseUShort();
-                  var nameID = p.parseUShort();
+                  nameRecords.push({
+                    platformID: p.parseUShort(),
+                    encodingID: p.parseUShort(),
+                    languageID: p.parseUShort(),
+                    nameID: p.parseUShort(),
+                    byteLength: p.parseUShort(),
+                    offset: p.parseUShort()
+                  });
+                }
+
+                var langTagCount = 0;
+                if (format === 1) {
+                  langTagCount = p.parseUShort();
+                  for (var j = 0; j < langTagCount; j++) {
+                    var length = p.parseUShort();
+                    var langTagOffset = p.parseUShort();
+                    if (!ltag) {
+                      ltag = [];
+                    }
+                    ltag[0x8000 + j] = decode.UTF16(data, stringOffset + langTagOffset, length);
+                  }
+                }
+
+                for (var i = 0; i < nameRecords.length; i++) {
+                  var record = nameRecords[i];
+                  var platformID = record.platformID;
+                  var encodingID = record.encodingID;
+                  var languageID = record.languageID;
+                  var nameID = record.nameID;
                   var property = nameTableNames[nameID] || nameID;
-                  var byteLength = p.parseUShort();
-                  var offset = p.parseUShort();
+                  var byteLength = record.byteLength;
+                  var offset = record.offset;
                   var language = getLanguageCode(platformID, languageID, ltag);
                   var encoding = getEncoding(platformID, encodingID, languageID);
                   if (encoding !== undefined && language !== undefined) {
@@ -32752,12 +32777,6 @@
                       translations[language] = text;
                     }
                   }
-                }
-
-                var langTagCount = 0;
-                if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
                 }
 
                 return name;
