@@ -32720,25 +32720,51 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+
+                var nameRecords = [];
                 for (var i = 0; i < count; i++) {
-                  var platformID = p.parseUShort();
-                  var encodingID = p.parseUShort();
-                  var languageID = p.parseUShort();
-                  var nameID = p.parseUShort();
-                  var property = nameTableNames[nameID] || nameID;
-                  var byteLength = p.parseUShort();
-                  var offset = p.parseUShort();
-                  var language = getLanguageCode(platformID, languageID, ltag);
-                  var encoding = getEncoding(platformID, encodingID, languageID);
+                  nameRecords.push({
+                    platformID: p.parseUShort(),
+                    encodingID: p.parseUShort(),
+                    languageID: p.parseUShort(),
+                    nameID: p.parseUShort(),
+                    length: p.parseUShort(),
+                    offset: p.parseUShort()
+                  });
+                }
+
+                var langTags = [];
+                if (format === 1) {
+                  var langTagCount = p.parseUShort();
+                  for (var i = 0; i < langTagCount; i++) {
+                    var length = p.parseUShort();
+                    var offset = p.parseUShort();
+                    langTags.push(decode.UTF16(data, stringOffset + offset, length));
+                  }
+                }
+
+                for (var i = 0; i < nameRecords.length; i++) {
+                  var record = nameRecords[i];
+                  var property = nameTableNames[record.nameID] || record.nameID;
+
+                  var language = undefined;
+                  if (format === 1 && record.languageID >= 0x8000 && record.languageID - 0x8000 < langTags.length) {
+                    language = langTags[record.languageID - 0x8000];
+                  } else {
+                    language = getLanguageCode(record.platformID, record.languageID, ltag);
+                  }
+
+                  var encoding = getEncoding(record.platformID, record.encodingID, record.languageID);
+
                   if (encoding !== undefined && language !== undefined) {
                     var text = void 0;
                     if (encoding === utf16) {
-                      text = decode.UTF16(data, stringOffset + offset, byteLength);
+                      text = decode.UTF16(data, stringOffset + record.offset, record.length);
                     } else {
                       text = decode.MACSTRING(
                         data,
-                        stringOffset + offset,
-                        byteLength,
+                        stringOffset + record.offset,
+                        record.length,
                         encoding
                       );
                     }
@@ -32752,12 +32778,6 @@
                       translations[language] = text;
                     }
                   }
-                }
-
-                var langTagCount = 0;
-                if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
                 }
 
                 return name;
