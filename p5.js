@@ -91232,7 +91232,7 @@
           };
 
           _main.default.Shader.prototype.compile = function() {
-            // TODO
+            this.init();
           };
 
           /**
