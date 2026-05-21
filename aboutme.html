@@ -50,9 +50,6 @@
             color: #00e1ff;
         }
         
-        .accent {
-            color: #00e5ff;
-        }
         a {
             color: #00ffdd;
             text-decoration: underline;
@@ -76,6 +73,34 @@
         transition: background-color 0.3s ease, transform 0.3s ease;
                 }
         .work-button:hover { background-color: #ffffff; transform: scale(1.1); }
+
+        .social-container {
+            margin-top: 40px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .social-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: transparent;
+            color: #00e5ff;
+            border: 2px solid #00e5ff;
+            text-decoration: none;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .social-button:hover {
+            background-color: #00e5ff;
+            color: #000012;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+        }
 
         .quote {
             font-size:x-large;
@@ -212,19 +237,19 @@
         const card = document.querySelector('.card');
 
         let animationFrameId = null;
-        let cardRect = cardContainer.getBoundingClientRect();
+        let rect = cardContainer.getBoundingClientRect();
 
-        const updateCardRect = () => {
-            cardRect = cardContainer.getBoundingClientRect();
+        const updateRect = () => {
+            rect = cardContainer.getBoundingClientRect();
         };
 
-        window.addEventListener('resize', updateCardRect, { passive: true });
-        window.addEventListener('scroll', updateCardRect, { passive: true });
+        window.addEventListener('resize', updateRect, { passive: true });
+        window.addEventListener('scroll', updateRect, { passive: true });
 
         cardContainer.addEventListener('mousemove', (e) => {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(() => {
-                const { width, height, left, top } = cardRect;
+                const { width, height, left, top } = rect;
                 const x = e.clientX - left;
                 const y = e.clientY - top;
                 const rotateX = (y / height - 0.5) * -25;
@@ -242,6 +267,13 @@
     
     <div class="button-container">
         <a href="work.html" class="work-button">Here's some of my work</a>
+    </div>
+
+    <div class="social-container">
+        <a href="https://www.linkedin.com/in/mukund-sontakke/" target="_blank" rel="noopener noreferrer" class="social-button">LinkedIn</a>
+        <a href="https://github.com/DJDadaisdanger" target="_blank" rel="noopener noreferrer" class="social-button">GitHub</a>
+        <a href="https://discord.com/users/1306987418506756146" target="_blank" rel="noopener noreferrer" class="social-button">Discord</a>
+        <a href="mailto:djdadaisdanger@gmail.com" class="social-button">Email</a>
     </div>
 
 </body>
