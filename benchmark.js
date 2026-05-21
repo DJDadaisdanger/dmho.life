@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 let getCalls = 0;
 let snapshotCalls = 0;
 
@@ -56,6 +58,8 @@ const mockFirestore = {
 };
 
 const db = mockFirestore;
+const commentsCollection = db.collection('comments');
+const { buildRepliesMap } = require('./utils.js');
 
 async function loadCommentsOptimized() {
     getCalls = 0;
@@ -117,4 +121,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { loadCommentsOptimized, db };
+export { loadCommentsOptimized, db };
