@@ -16121,11 +16121,6 @@
               return from(value, encodingOrOffset, length);
             };
 
-            // Note: Change prototype *after* Buffer.from is defined to workaround Chrome bug:
-            // https://github.com/feross/buffer/pull/148
-            Object.setPrototypeOf(Buffer.prototype, Uint8Array.prototype);
-            Object.setPrototypeOf(Buffer, Uint8Array);
-
             function assertSize(size) {
               if (typeof size !== 'number') {
                 throw new TypeError('"size" argument must be of type number');
@@ -16159,6 +16154,11 @@
             Buffer.alloc = function(size, fill, encoding) {
               return alloc(size, fill, encoding);
             };
+
+            // Note: Change prototype *after* Buffer.alloc is defined to workaround Chrome bug:
+            // https://github.com/feross/buffer/pull/148
+            Object.setPrototypeOf(Buffer.prototype, Uint8Array.prototype);
+            Object.setPrototypeOf(Buffer, Uint8Array);
 
             function allocUnsafe(size) {
               assertSize(size);
@@ -24450,7 +24450,8 @@
 
               // TODO(deanm): Bounds check x, y.  Do they need to be within the virtual
               // canvas width/height, I imagine?
-              if (x < 0 || y < 0 || x > 65535 || y > 65535) throw new Error('x/y invalid.');
+              if (x < 0 || y < 0 || x + w > width || y + h > height || x > 65535 || y > 65535)
+                throw new Error('x/y invalid.');
 
               if (w <= 0 || h <= 0 || w > 65535 || h > 65535)
                 throw new Error('Width/Height invalid.');
@@ -24527,9 +24528,11 @@
               buf[p++] = (w >> 8) & 0xff;
               buf[p++] = h & 0xff;
               buf[p++] = (h >> 8) & 0xff;
+
+              var is_interlaced = opts.interlace === true || opts.interlaced === true;
+
               // NOTE: No sort flag (unused?).
-              // TODO(deanm): Support interlace.
-              buf[p++] = using_local_palette === true ? 0x80 | (min_code_size - 1) : 0;
+              buf[p++] = (using_local_palette === true ? 0x80 | (min_code_size - 1) : 0) | (is_interlaced ? 0x40 : 0);
 
               // - Local Color Table
               if (using_local_palette === true) {
@@ -24541,11 +24544,33 @@
                 }
               }
 
+              var pixels = indexed_pixels;
+              if (is_interlaced) {
+                pixels = new Uint8Array(w * h);
+                var offset = 0;
+                // Pass 1
+                for (var i = 0; i < h; i += 8) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 2
+                for (var i = 4; i < h; i += 8) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 3
+                for (var i = 2; i < h; i += 4) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+                // Pass 4
+                for (var i = 1; i < h; i += 2) {
+                  for (var j = 0; j < w; j++) pixels[offset++] = indexed_pixels[i * w + j];
+                }
+              }
+
               p = GifWriterOutputLZWCodeStream(
                 buf,
                 p,
                 min_code_size < 2 ? 2 : min_code_size,
-                indexed_pixels
+                pixels
               );
 
               return p;
@@ -25077,12 +25102,10 @@
 
             var subblock_size = code_stream[p++];
 
-            // TODO(deanm): Would using a TypedArray be any faster?  At least it would
-            // solve the fast mode / backing store uncertainty.
-            // var code_table = Array(4096);
             var code_table = new Int32Array(4096); // Can be signed, we only use 20 bits.
 
             var prev_code = null; // Track code-1.
+            var is_first_code = true;
 
             while (true) {
               // Read up to two bytes, making sure we always 12-bits for max sized code.
@@ -25102,15 +25125,22 @@
 
               // TODO(deanm): We should never really get here, we should have received
               // and EOI.
-              if (cur_shift < cur_code_size) break;
+              if (cur_shift < cur_code_size) {
+                console.warn("Corrupted GIF: stream ended before EOI");
+                break;
+              }
 
               var code = cur & code_mask;
               cur >>= cur_code_size;
               cur_shift -= cur_code_size;
 
-              // TODO(deanm): Maybe should check that the first code was a clear code,
-              // at least this is what you're supposed to do.  But actually our encoder
-              // now doesn't emit a clear code first anyway.
+              if (is_first_code) {
+                is_first_code = false;
+                if (code !== clear_code) {
+                  console.log('Warning, first code was not a clear code.');
+                }
+              }
+
               if (code === clear_code) {
                 // We don't actually have to clear the table.  This could be a good idea
                 // for greater error checking, but we don't really do any anyway.  We
@@ -25125,6 +25155,19 @@
                 continue;
               } else if (code === eoi_code) {
                 break;
+              }
+
+              // TODO(deanm): We should never really get here, we should have received
+              // a clear code at the start of the stream.  But some encoders seem to
+              // mess this up.  It should just be dictionary[code]... but doing that
+              // without a clear code means we haven't initialized the dictionary
+              if (prev_code === null) {
+                if (code >= clear_code) {
+                  console.warn('Not a clear code and not in dictionary');
+                }
+                output[op++] = code;
+                prev_code = code;
+                continue;
               }
 
               // We have a similar situation as the decoder, where we want to store
@@ -25183,14 +25226,9 @@
 
               if (prev_code !== null && next_code < 4096) {
                 code_table[next_code++] = (prev_code << 8) | k;
-                // TODO(deanm): Figure out this clearing vs code growth logic better.  I
-                // have an feeling that it should just happen somewhere else, for now it
-                // is awkward between when we grow past the max and then hit a clear code.
-                // For now just check if we hit the max 12-bits (then a clear code should
-                // follow, also of course encoded in 12-bits).
-                if (next_code >= code_mask + 1 && cur_code_size < 12) {
-                  ++cur_code_size;
-                  code_mask = (code_mask << 1) | 1;
+                if (next_code === (1 << cur_code_size) && cur_code_size < 12) {
+                  cur_code_size++;
+                  code_mask = (1 << cur_code_size) - 1;
                 }
               }
 
@@ -30092,8 +30130,9 @@
                   commands = font.hinting.getCommands(hPoints);
                   x = Math.round(x);
                   y = Math.round(y);
-                  // TODO in case of hinting xyScaling is not yet supported
-                  xScale = yScale = 1;
+                  var scale = 1 / this.path.unitsPerEm * fontSize;
+                  xScale = xScale !== undefined ? xScale / scale : 1;
+                  yScale = yScale !== undefined ? yScale / scale : 1;
                 } else {
                   commands = this.path.commands;
                   var scale = 1 / this.path.unitsPerEm * fontSize;
@@ -32720,25 +32759,51 @@
                 var format = p.parseUShort();
                 var count = p.parseUShort();
                 var stringOffset = p.offset + p.parseUShort();
+
+                var nameRecords = [];
                 for (var i = 0; i < count; i++) {
-                  var platformID = p.parseUShort();
-                  var encodingID = p.parseUShort();
-                  var languageID = p.parseUShort();
-                  var nameID = p.parseUShort();
-                  var property = nameTableNames[nameID] || nameID;
-                  var byteLength = p.parseUShort();
-                  var offset = p.parseUShort();
-                  var language = getLanguageCode(platformID, languageID, ltag);
-                  var encoding = getEncoding(platformID, encodingID, languageID);
+                  nameRecords.push({
+                    platformID: p.parseUShort(),
+                    encodingID: p.parseUShort(),
+                    languageID: p.parseUShort(),
+                    nameID: p.parseUShort(),
+                    length: p.parseUShort(),
+                    offset: p.parseUShort()
+                  });
+                }
+
+                var langTags = [];
+                if (format === 1) {
+                  var langTagCount = p.parseUShort();
+                  for (var i = 0; i < langTagCount; i++) {
+                    var length = p.parseUShort();
+                    var offset = p.parseUShort();
+                    langTags.push(decode.UTF16(data, stringOffset + offset, length));
+                  }
+                }
+
+                for (var i = 0; i < nameRecords.length; i++) {
+                  var record = nameRecords[i];
+                  var property = nameTableNames[record.nameID] || record.nameID;
+
+                  var language = undefined;
+                  if (format === 1 && record.languageID >= 0x8000 && record.languageID - 0x8000 < langTags.length) {
+                    language = langTags[record.languageID - 0x8000];
+                  } else {
+                    language = getLanguageCode(record.platformID, record.languageID, ltag);
+                  }
+
+                  var encoding = getEncoding(record.platformID, record.encodingID, record.languageID);
+
                   if (encoding !== undefined && language !== undefined) {
                     var text = void 0;
                     if (encoding === utf16) {
-                      text = decode.UTF16(data, stringOffset + offset, byteLength);
+                      text = decode.UTF16(data, stringOffset + record.offset, record.length);
                     } else {
                       text = decode.MACSTRING(
                         data,
-                        stringOffset + offset,
-                        byteLength,
+                        stringOffset + record.offset,
+                        record.length,
                         encoding
                       );
                     }
@@ -32752,12 +32817,6 @@
                       translations[language] = text;
                     }
                   }
-                }
-
-                var langTagCount = 0;
-                if (format === 1) {
-                  // FIXME: Also handle Microsoft's 'name' table 1.
-                  langTagCount = p.parseUShort();
                 }
 
                 return name;
@@ -33858,10 +33917,15 @@
                 var ulUnicodeRange2 = 0;
                 var ulUnicodeRange3 = 0;
                 var ulUnicodeRange4 = 0;
+                var allUnicodes = [];
 
                 for (var i = 0; i < font.glyphs.length; i += 1) {
                   var glyph = font.glyphs.get(i);
                   var unicode = glyph.unicode | 0;
+
+                  if (unicode > 0) {
+                    allUnicodes.push(unicode);
+                  }
 
                   if (isNaN(glyph.advanceWidth)) {
                     throw new Error(
@@ -33945,6 +34009,89 @@
 
                 var maxpTable = maxp.make(font.glyphs.length);
 
+                function calcCodePageRanges(unicodes) {
+                  var hasAscii = true;
+                  for (var i = 0x20; i <= 0x7E; i++) {
+                    if (unicodes.indexOf(i) === -1) {
+                      hasAscii = false;
+                      break;
+                    }
+                  }
+
+                  var hasLineart = unicodes.indexOf(0x2524) !== -1;
+                  var has221A = unicodes.indexOf(0x221A) !== -1;
+                  var has0405 = unicodes.indexOf(0x0405) !== -1;
+                  var has255C = unicodes.indexOf(0x255C) !== -1;
+                  var has00BD = unicodes.indexOf(0x00BD) !== -1;
+                  var has2030 = unicodes.indexOf(0x2030) !== -1;
+                  var has2211 = unicodes.indexOf(0x2211) !== -1;
+
+                  var bits = [];
+                  for (var i = 0; i < unicodes.length; i++) {
+                    var uni = unicodes[i];
+                    if (uni === 0x00DE && hasAscii) { bits.push(0); }
+                    else if (uni === 0x013D && hasAscii) {
+                      bits.push(1);
+                      if (hasLineart) bits.push(58);
+                    } else if (uni === 0x0411) {
+                      bits.push(2);
+                      if (has0405 && hasLineart) bits.push(57);
+                      if (has255C && hasLineart) bits.push(49);
+                    } else if (uni === 0x0386) {
+                      bits.push(3);
+                      if (hasLineart && has00BD) bits.push(48);
+                      if (hasLineart && has221A) bits.push(60);
+                    } else if (uni === 0x0130 && hasAscii) {
+                      bits.push(4);
+                      if (hasLineart) bits.push(56);
+                    } else if (uni === 0x05D0) {
+                      bits.push(5);
+                      if (hasLineart && has221A) bits.push(53);
+                    } else if (uni === 0x0631) {
+                      bits.push(6);
+                      if (has221A) bits.push(51);
+                      if (hasLineart) bits.push(61);
+                    } else if (uni === 0x0157 && hasAscii) {
+                      bits.push(7);
+                      if (hasLineart) bits.push(59);
+                    } else if (uni === 0x20AB && hasAscii) { bits.push(8); }
+                    else if (uni === 0x0E45) { bits.push(16); }
+                    else if (uni === 0x30A8) { bits.push(17); }
+                    else if (uni === 0x3105) { bits.push(18); }
+                    else if (uni === 0x3131) { bits.push(19); }
+                    else if (uni === 0x592E) { bits.push(20); }
+                    else if (uni === 0xACF4) { bits.push(21); }
+                    else if (uni === 0x2665 && hasAscii) { bits.push(30); }
+                    else if (uni === 0x00FE && hasAscii && hasLineart) { bits.push(54); }
+                    else if (uni === 0x255A && hasAscii) {
+                      bits.push(62);
+                      bits.push(63);
+                    } else if (hasAscii && hasLineart && has221A) {
+                      if (uni === 0x00C5) bits.push(50);
+                      else if (uni === 0x00E9) bits.push(52);
+                      else if (uni === 0x00F5) bits.push(55);
+                    }
+                  }
+
+                  if (hasAscii && has2030 && has2211) {
+                    bits.push(29);
+                  }
+
+                  var ulCodePageRange1 = 0;
+                  var ulCodePageRange2 = 0;
+                  for (var i = 0; i < bits.length; i++) {
+                    var bit = bits[i];
+                    if (bit < 32) {
+                      ulCodePageRange1 |= (1 << bit);
+                    } else {
+                      ulCodePageRange2 |= (1 << (bit - 32));
+                    }
+                  }
+                  return [ulCodePageRange1, ulCodePageRange2];
+                }
+
+                var codePageRanges = calcCodePageRanges(allUnicodes);
+
                 var os2Table = os2.make({
                   xAvgCharWidth: Math.round(globals.advanceWidthAvg),
                   usWeightClass: font.tables.os2.usWeightClass,
@@ -33965,7 +34112,8 @@
                   sTypoLineGap: 0,
                   usWinAscent: globals.yMax,
                   usWinDescent: Math.abs(globals.yMin),
-                  ulCodePageRange1: 1, // FIXME: hard-code Latin 1 support for now
+                  ulCodePageRange1: codePageRanges[0],
+                  ulCodePageRange2: codePageRanges[1],
                   sxHeight: metricsForChar(font, 'xyvw', {
                     yMax: Math.round(globals.ascender / 2)
                   }).yMax,
@@ -66911,6 +67059,19 @@
             if (p5Image === undefined) {
               p5Image = this;
             }
+            if (
+              p5Image instanceof Array ||
+              p5Image instanceof Uint8Array ||
+              p5Image instanceof Uint8ClampedArray ||
+              (typeof Array.isArray === 'function' && Array.isArray(p5Image))
+            ) {
+              this.loadPixels();
+              for (var i = 0; i < p5Image.length; i++) {
+                this.pixels[i * 4 + 3] = p5Image[i];
+              }
+              this.updatePixels();
+              return;
+            }
             var currBlend = this.drawingContext.globalCompositeOperation;
 
             var scaleFactor = 1;
@@ -84501,9 +84662,19 @@
                       var vertString = tokens[vertexTokens[tokenInd]];
                       var vertIndex = 0;
 
-                      // TODO: Faces can technically use negative numbers to refer to the
-                      // previous nth vertex. I haven't seen this used in practice, but
-                      // it might be good to implement this in the future.
+                      if (vertString.indexOf('-') !== -1) {
+                        var parts = vertString.split('/');
+                        for (var i = 0; i < parts.length; i++) {
+                          var val = parseInt(parts[i], 10);
+                          if (val < 0) {
+                            if (i === 0) val = loadedVerts.v.length + val + 1;
+                            else if (i === 1) val = loadedVerts.vt.length + val + 1;
+                            else if (i === 2) val = loadedVerts.vn.length + val + 1;
+                            parts[i] = val;
+                          }
+                        }
+                        vertString = parts.join('/');
+                      }
 
                       if (indexedVerts[vertString] !== undefined) {
                         vertIndex = indexedVerts[vertString];
@@ -87387,7 +87558,7 @@
             if (callback instanceof Function) {
               callback.call(this);
             }
-            return this; // TODO: is this a constructor?
+            return this;
           };
 
           _main.default.Geometry.prototype.reset = function() {
@@ -89341,10 +89512,10 @@
               'precision highp float;\n\nuniform vec4 uMaterialColor;\nuniform vec4 uTint;\nuniform sampler2D uSampler;\nuniform bool isTexture;\nuniform bool uEmissive;\n\nvarying highp vec2 vVertTexCoord;\nvarying vec3 vDiffuseColor;\nvarying vec3 vSpecularColor;\n\nvoid main(void) {\n  if(uEmissive && !isTexture) {\n    gl_FragColor = uMaterialColor;\n  }\n  else {\n    gl_FragColor = isTexture ? texture2D(uSampler, vVertTexCoord) * (uTint / vec4(255, 255, 255, 255)) : uMaterialColor;\n    gl_FragColor.rgb = gl_FragColor.rgb * vDiffuseColor + vSpecularColor;\n  }\n}',
 
             phongVert:
-              'precision highp float;\nprecision highp int;\n\nattribute vec3 aPosition;\nattribute vec3 aNormal;\nattribute vec2 aTexCoord;\n\nuniform vec3 uAmbientColor;\n\nuniform mat4 uModelViewMatrix;\nuniform mat4 uProjectionMatrix;\nuniform mat3 uNormalMatrix;\n\nvarying vec3 vNormal;\nvarying vec2 vTexCoord;\nvarying vec3 vViewPosition;\nvarying vec3 vAmbientColor;\n\nvoid main(void) {\n\n  vec4 viewModelPosition = uModelViewMatrix * vec4(aPosition, 1.0);\n\n  // Pass varyings to fragment shader\n  vViewPosition = viewModelPosition.xyz;\n  gl_Position = uProjectionMatrix * viewModelPosition;  \n\n  vNormal = uNormalMatrix * aNormal;\n  vTexCoord = aTexCoord;\n\n  vAmbientColor = uAmbientColor;\n}\n',
+              'precision highp float;\nprecision highp int;\n\nattribute vec3 aPosition;\nattribute vec3 aNormal;\nattribute vec2 aTexCoord;\n\nuniform mat4 uModelViewMatrix;\nuniform mat4 uProjectionMatrix;\nuniform mat3 uNormalMatrix;\n\nvarying vec3 vNormal;\nvarying vec2 vTexCoord;\nvarying vec3 vViewPosition;\n\nvoid main(void) {\n\n  vec4 viewModelPosition = uModelViewMatrix * vec4(aPosition, 1.0);\n\n  // Pass varyings to fragment shader\n  vViewPosition = viewModelPosition.xyz;\n  gl_Position = uProjectionMatrix * viewModelPosition;  \n\n  vNormal = uNormalMatrix * aNormal;\n  vTexCoord = aTexCoord;\n}\n',
             phongFrag:
               lightingShader +
-              '// include lighting.glsl\nprecision highp float;\nprecision highp int;\n\nuniform vec4 uMaterialColor;\nuniform vec4 uTint;\nuniform sampler2D uSampler;\nuniform bool isTexture;\nuniform bool uEmissive;\n\nvarying vec3 vNormal;\nvarying vec2 vTexCoord;\nvarying vec3 vViewPosition;\nvarying vec3 vAmbientColor;\n\nvoid main(void) {\n\n  vec3 diffuse;\n  vec3 specular;\n  totalLight(vViewPosition, normalize(vNormal), diffuse, specular);\n\n  if(uEmissive && !isTexture) {\n    gl_FragColor = uMaterialColor;\n  }\n  else {\n    gl_FragColor = isTexture ? texture2D(uSampler, vTexCoord) * (uTint / vec4(255, 255, 255, 255)) : uMaterialColor;\n    gl_FragColor.rgb = gl_FragColor.rgb * (diffuse + vAmbientColor) + specular;\n  }\n}',
+              '// include lighting.glsl\nprecision highp float;\nprecision highp int;\n\nuniform vec4 uMaterialColor;\nuniform vec4 uTint;\nuniform sampler2D uSampler;\nuniform bool isTexture;\nuniform bool uEmissive;\n\nvarying vec3 vNormal;\nvarying vec2 vTexCoord;\nvarying vec3 vViewPosition;\n\nvoid main(void) {\n\n  vec3 diffuse;\n  vec3 specular;\n  totalLight(vViewPosition, normalize(vNormal), diffuse, specular);\n\n  if(uEmissive && !isTexture) {\n    gl_FragColor = uMaterialColor;\n  }\n  else {\n    gl_FragColor = isTexture ? texture2D(uSampler, vTexCoord) * (uTint / vec4(255, 255, 255, 255)) : uMaterialColor;\n    gl_FragColor.rgb = gl_FragColor.rgb * (diffuse + uAmbientColor) + specular;\n  }\n}',
 
             fontVert:
               "precision mediump float;\n\nattribute vec3 aPosition;\nattribute vec2 aTexCoord;\nuniform mat4 uModelViewMatrix;\nuniform mat4 uProjectionMatrix;\n\nuniform vec4 uGlyphRect;\nuniform float uGlyphOffset;\n\nvarying vec2 vTexCoord;\nvarying float w;\n\nvoid main() {\n  vec4 positionVec4 = vec4(aPosition, 1.0);\n\n  // scale by the size of the glyph's rectangle\n  positionVec4.xy *= uGlyphRect.zw - uGlyphRect.xy;\n\n  // move to the corner of the glyph\n  positionVec4.xy += uGlyphRect.xy;\n\n  // move to the letter's line offset\n  positionVec4.x += uGlyphOffset;\n  \n  gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;\n  vTexCoord = aTexCoord;\n  w = gl_Position.w;\n}\n",
@@ -90611,13 +90782,11 @@
               this.directionalLightSpecularColors
             );
 
-            // sum these here...
-            var ambientLightCount = this.ambientLightColors.length / 3;
-            var ambientColor = [0.0, 0.0, 0.0];
-            for (var i = 0; i < ambientLightCount; i++) {
-              ambientColor[0] += this.ambientLightColors[i * 3];
-              ambientColor[1] += this.ambientLightColors[i * 3 + 1];
-              ambientColor[2] += this.ambientLightColors[i * 3 + 2];
+            var ambientColor = [0, 0, 0];
+            for (var i = 0; i < this.ambientLightColors.length; i += 3) {
+              ambientColor[0] += this.ambientLightColors[i];
+              ambientColor[1] += this.ambientLightColors[i + 1];
+              ambientColor[2] += this.ambientLightColors[i + 2];
             }
             fillShader.setUniform('uAmbientColor', ambientColor);
 
@@ -90919,9 +91088,6 @@
            * @param {String} vertSrc source code for the vertex shader (as a string)
            * @param {String} fragSrc source code for the fragment shader (as a string)
            */ _main.default.Shader = function(renderer, vertSrc, fragSrc) {
-            // TODO: adapt this to not take ids, but rather,
-            // to take the source for a vertex and fragment shader
-            // to enable custom shaders at some later date
             this._renderer = renderer;
             this._vertSrc = vertSrc;
             this._fragSrc = fragSrc;
@@ -90948,10 +91114,6 @@
           _main.default.Shader.prototype.init = function() {
             if (this._glProgram === 0 /* or context is stale? */) {
               var gl = this._renderer.GL;
-
-              // @todo: once custom shading is allowed,
-              // friendly error messages should be used here to share
-              // compiler and linker errors.
 
               //set up the shader by
               // 1. creating and getting a gl id for the shader program,
@@ -91095,7 +91257,7 @@
           };
 
           _main.default.Shader.prototype.compile = function() {
-            // TODO
+            this.init();
           };
 
           /**
@@ -91202,8 +91364,37 @@
           };
 
           _main.default.Shader.prototype.unbindTextures = function() {
-            // TODO: migrate stuff from material.js here
-            // - OR - have material.js define this function
+            var gl = this._renderer.GL;
+            var _iteratorNormalCompletion = true;
+            var _didIteratorError = false;
+            var _iteratorError = undefined;
+            try {
+              for (
+                var _iterator = this.samplers[Symbol.iterator](), _step;
+                !(_iteratorNormalCompletion = (_step = _iterator.next()).done);
+                _iteratorNormalCompletion = true
+              ) {
+                var uniform = _step.value;
+                var tex = uniform.texture;
+                if (tex !== undefined) {
+                  gl.activeTexture(gl.TEXTURE0 + uniform.samplerIndex);
+                  tex.unbindTexture();
+                }
+              }
+            } catch (err) {
+              _didIteratorError = true;
+              _iteratorError = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion && _iterator.return != null) {
+                  _iterator.return();
+                }
+              } finally {
+                if (_didIteratorError) {
+                  throw _iteratorError;
+                }
+              }
+            }
           };
 
           _main.default.Shader.prototype._setMatrixUniforms = function() {
@@ -92005,7 +92196,7 @@
               return this._textFont._textWidth(s, this._textSize);
             }
 
-            return 0; // TODO: error
+            throw new Error('textWidth() not yet implemented for non-OpenType fonts in WebGL mode');
           };
 
           // rendering constants
