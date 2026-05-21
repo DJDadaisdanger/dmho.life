@@ -92058,7 +92058,7 @@
               return this._textFont._textWidth(s, this._textSize);
             }
 
-            return 0; // TODO: error
+            throw new Error('textWidth() not yet implemented for non-OpenType fonts in WebGL mode');
           };
 
           // rendering constants
