@@ -24450,7 +24450,8 @@
 
               // TODO(deanm): Bounds check x, y.  Do they need to be within the virtual
               // canvas width/height, I imagine?
-              if (x < 0 || y < 0 || x > 65535 || y > 65535) throw new Error('x/y invalid.');
+              if (x < 0 || y < 0 || x + w > width || y + h > height || x > 65535 || y > 65535)
+                throw new Error('x/y invalid.');
 
               if (w <= 0 || h <= 0 || w > 65535 || h > 65535)
                 throw new Error('Width/Height invalid.');
