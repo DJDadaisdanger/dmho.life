@@ -92001,6 +92001,7 @@
               return this._textFont._textWidth(s, this._textSize);
             }
 
+            console.warn('textWidth not supported for non-OpenType fonts in WebGL mode.');
             return 0; // TODO: error
           };
 
