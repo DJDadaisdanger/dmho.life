@@ -57,6 +57,7 @@ const mockFirestore = {
 
 const db = mockFirestore;
 const commentsCollection = db.collection('comments');
+const { buildRepliesMap } = require('./utils.js');
 
 async function loadCommentsOptimized() {
     getCalls = 0;
