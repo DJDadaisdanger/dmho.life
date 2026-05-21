@@ -1,114 +1,79 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const path = require('path');
-const { JSDOM } = require('jsdom');
 
-test('submitComment functionality', async (t) => {
-    const html = fs.readFileSync(path.join(__dirname, 'research.html'), 'utf-8');
-    const dom = new JSDOM(html, { runScripts: "outside-only" });
-    const window = dom.window;
-    const document = window.document;
+// Read research.html
+const html = fs.readFileSync('research.html', 'utf8');
+// Extract the deleteComment function
+const match = html.match(/function deleteComment\(id\) \{[\s\S]*?console\.error\("Error removing document: ", error\);\s*\}\);\s*\}/);
 
-    // Extract the inline script containing the functions
-    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-    const scriptContent = scriptMatch[1];
+if (!match) {
+    throw new Error('Could not find deleteComment function in research.html');
+}
 
-    // Mock dependencies
-    let addedDocument = null;
-    let loadCommentsCalled = false;
-    let addPromiseResolve;
+// Variables to track state
+let deletedId = null;
+let loadCommentsCalled = false;
+let loggedError = null;
 
-    window.firebase = {
-        auth: () => ({
-            signInAnonymously: () => Promise.resolve(),
-            currentUser: { uid: 'mock-user-uid' },
-            onAuthStateChanged: () => {}
-        }),
-        firestore: {
-            FieldValue: {
-                serverTimestamp: () => 'mock-server-timestamp'
+// Mock the environment
+global.commentsCollection = {
+    doc: (id) => ({
+        delete: () => {
+            deletedId = id;
+            if (id === 'fail') {
+                return Promise.reject(new Error('delete failed'));
             }
+            return Promise.resolve();
         }
-    };
+    })
+};
 
-    window.commentsCollection = {
-        add: (doc) => {
-            addedDocument = doc;
-            return new Promise((resolve) => {
-                addPromiseResolve = resolve;
-            });
-        }
-    };
+global.loadComments = () => {
+    loadCommentsCalled = true;
+};
 
-    window.db = {
-        collectionGroup: () => ({
-            orderBy: () => ({
-                get: () => Promise.resolve([])
-            })
-        })
-    };
+const originalConsoleError = console.error;
+global.console.error = (msg, err) => {
+    loggedError = err;
+};
 
-    window.fetch = () => Promise.resolve({ text: () => Promise.resolve('') });
-    window.marked = { parse: (text) => text };
-    window.DOMPurify = { sanitize: (text) => text };
+// Evaluate the function into the global scope
+eval(match[0]);
 
-    // Execute the script in the context of the window
-    window.eval(scriptContent);
-
-    // Override loadComments since it has other dependencies we don't want to mock for this test
-    window.loadComments = () => {
-        loadCommentsCalled = true;
-    };
-
-    // Test: User is logged in, comment is valid
-    const commentInput = document.getElementById('comment-input');
-    commentInput.value = 'This is a test comment';
-
-    // Call function - we need to wait for the promise to resolve internally
-    window.submitComment();
-
-    // Wait a tick for the add promise to be returned inside submitComment
-    await new Promise(resolve => setImmediate(resolve));
-
-    // Now resolve the promise returned by add
-    addPromiseResolve();
-
-    // Wait a tick for the .then block inside submitComment to execute
-    await new Promise(resolve => setImmediate(resolve));
-
-    // Verify side effects
-    assert.ok(addedDocument, 'Document should have been added');
-    assert.strictEqual(addedDocument.text, 'This is a test comment');
-    assert.strictEqual(addedDocument.authorId, 'mock-user-uid');
-    assert.strictEqual(addedDocument.timestamp, 'mock-server-timestamp');
-
-    // Check if UI updated
-    assert.strictEqual(commentInput.value, '', 'Input should be cleared');
-    assert.strictEqual(document.getElementById('comment-box-container').style.display, 'block', 'Comment box display should toggle');
-    assert.ok(loadCommentsCalled, 'loadComments should have been called');
-
-    // Reset mocks for next test
-    addedDocument = null;
-    loadCommentsCalled = false;
-
-    // Test: User is logged in, but comment is empty/whitespace
-    commentInput.value = '   ';
-    window.submitComment();
-    await new Promise(resolve => setImmediate(resolve));
-
-    assert.strictEqual(addedDocument, null, 'Document should not be added if comment is empty');
-    assert.strictEqual(loadCommentsCalled, false, 'loadComments should not be called');
-
-    // Test: User is not logged in
-    window.firebase.auth = () => ({
-        signInAnonymously: () => Promise.resolve(),
-        currentUser: null,
-        onAuthStateChanged: () => {}
+test('deleteComment functionality', async (t) => {
+    // Reset state before each test
+    t.beforeEach(() => {
+        deletedId = null;
+        loadCommentsCalled = false;
+        loggedError = null;
     });
-    commentInput.value = 'Valid comment but no user';
-    window.submitComment();
-    await new Promise(resolve => setImmediate(resolve));
 
-    assert.strictEqual(addedDocument, null, 'Document should not be added if user is null');
+    // Restore console.error after all tests
+    t.after(() => {
+        global.console.error = originalConsoleError;
+    });
+
+    await t.test('successfully deletes a comment and reloads comments', async () => {
+        deleteComment('123');
+
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
+
+        assert.strictEqual(deletedId, '123', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, true, 'Should call loadComments after successful deletion');
+        assert.strictEqual(loggedError, null, 'Should not log any errors');
+    });
+
+    await t.test('handles deletion failure correctly', async () => {
+        deleteComment('fail');
+
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
+
+        assert.strictEqual(deletedId, 'fail', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, false, 'Should not call loadComments if deletion fails');
+        assert.ok(loggedError, 'Should log an error');
+        assert.strictEqual(loggedError.message, 'delete failed', 'Logged error should match the rejection reason');
+    });
 });

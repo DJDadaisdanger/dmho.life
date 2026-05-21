@@ -61,12 +61,67 @@
     <a href="research.html">curently wrking on..</a>
 </body>
 <script>
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-        alert("This wasn't made for mobile. If functionality fails, that's on you. IDC, it's a skill issue.");
-     setTimeout(() => {
-            alert("I warned You 💀");
-        }, 13742); 
+    function showToast(message, duration = 5000) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            Object.assign(container.style, {
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                zIndex: '9999',
+                alignItems: 'center',
+                width: '90%',
+                pointerEvents: 'none'
+            });
+            document.body.appendChild(container);
+        }
 
+        const toast = document.createElement('div');
+        Object.assign(toast.style, {
+            backgroundColor: '#000012',
+            color: '#ffffff',
+            border: '2px solid #00e5ff',
+            padding: '15px 20px',
+            borderRadius: '25px',
+            fontFamily: 'myFont, sans-serif',
+            fontSize: '1.2rem',
+            boxShadow: '0 4px 6px rgba(0, 229, 255, 0.2)',
+            opacity: '0',
+            transition: 'opacity 0.5s, transform 0.5s',
+            transform: 'translateY(20px)',
+            textAlign: 'center'
+        });
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        // Reflow
+        toast.offsetHeight;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                toast.remove();
+                if (container.childNodes.length === 0) {
+                    container.remove();
+                }
+            }, 500);
+        }, duration);
+    }
+
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+        showToast("This wasn't made for mobile. If functionality fails, that's on you. IDC, it's a skill issue.", 5000);
+        setTimeout(() => {
+            showToast("I warned You 💀", 4000);
+        }, 13742);
     }
 </script>
 </html>
