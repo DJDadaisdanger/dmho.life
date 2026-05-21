@@ -90950,9 +90950,6 @@
            * @param {String} vertSrc source code for the vertex shader (as a string)
            * @param {String} fragSrc source code for the fragment shader (as a string)
            */ _main.default.Shader = function(renderer, vertSrc, fragSrc) {
-            // TODO: adapt this to not take ids, but rather,
-            // to take the source for a vertex and fragment shader
-            // to enable custom shaders at some later date
             this._renderer = renderer;
             this._vertSrc = vertSrc;
             this._fragSrc = fragSrc;
@@ -90979,10 +90976,6 @@
           _main.default.Shader.prototype.init = function() {
             if (this._glProgram === 0 /* or context is stale? */) {
               var gl = this._renderer.GL;
-
-              // @todo: once custom shading is allowed,
-              // friendly error messages should be used here to share
-              // compiler and linker errors.
 
               //set up the shader by
               // 1. creating and getting a gl id for the shader program,
