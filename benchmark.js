@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 let getCalls = 0;
 let snapshotCalls = 0;
 
@@ -119,4 +121,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { loadCommentsOptimized, db };
+export { loadCommentsOptimized, db };
