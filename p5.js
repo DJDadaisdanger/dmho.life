@@ -87558,7 +87558,7 @@
             if (callback instanceof Function) {
               callback.call(this);
             }
-            return this; // TODO: is this a constructor?
+            return this;
           };
 
           _main.default.Geometry.prototype.reset = function() {
