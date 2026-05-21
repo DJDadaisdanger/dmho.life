@@ -107,7 +107,7 @@ async function loadCommentsOptimized() {
         const commentId = commentObj.id;
         const comment = commentObj.data;
         const replies = repliesMap.get(commentId) || [];
-        results.push({ commentId, text: comment.text, replies });
+        results.set(commentId, { commentId, text: comment.text, replies });
     });
 
     return { results, getCalls, snapshotCalls };
