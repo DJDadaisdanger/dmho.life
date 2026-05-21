@@ -1,12 +1,12 @@
-import test from 'node:test';
-import assert from 'node:assert';
-import { loadCommentsOptimized } from './benchmark.js';
+const test = require('node:test');
+const assert = require('node:assert');
+const { loadCommentsOptimized, db } = require('./benchmark.js');
 
 test('loadCommentsOptimized returns correct results and call count', async (t) => {
-    const { results, getCalls } = await loadCommentsOptimized();
+    const { results, getCalls, snapshotCalls } = await loadCommentsOptimized();
 
     // Verify number of Firestore get() calls
-    assert.strictEqual(getCalls, 2, 'Should make exactly 2 Firestore get() calls');
+    assert.strictEqual(snapshotCalls, 2, 'Should make exactly 2 Firestore onSnapshot() registrations');
 
     // Verify number of comments loaded
     assert.strictEqual(results.length, 5, 'Should load 5 comments');
@@ -27,4 +27,27 @@ test('each comment has the correct number of replies', async (t) => {
     results.forEach(comment => {
         assert.strictEqual(comment.replies.length, 2, `Comment ${comment.commentId} should have 2 replies`);
     });
+});
+
+test('loadCommentsOptimized handles errors (rejects promise)', async (t) => {
+    const originalCollectionGroup = db.collectionGroup;
+    db.collectionGroup = (name) => ({
+        orderBy: () => ({
+            get: async () => {
+                throw new Error('Simulated network error');
+            }
+        })
+    });
+
+    try {
+        await assert.rejects(
+            async () => { await loadCommentsOptimized(); },
+            (err) => {
+                assert.strictEqual(err.message, 'Simulated network error');
+                return true;
+            }
+        );
+    } finally {
+        db.collectionGroup = originalCollectionGroup;
+    }
 });

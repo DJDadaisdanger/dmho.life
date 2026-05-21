@@ -1,33 +1,32 @@
 import { fileURLToPath } from 'node:url';
 
 let getCalls = 0;
+let snapshotCalls = 0;
 
 const mockFirestore = {
     collection: (name) => ({
         orderBy: (field, direction) => ({
-            get: async () => {
-                getCalls++;
+            onSnapshot: (callback) => {
+                snapshotCalls++;
                 if (name === 'comments') {
-                    return {
-                        forEach: (callback) => {
-                            [1, 2, 3, 4, 5].forEach(id => {
-                                callback({
-                                    id: `comment_${id}`,
-                                    data: () => ({ text: `Comment ${id}` })
-                                });
-                            });
-                        }
-                    };
+                    const docs = [1, 2, 3, 4, 5].map(id => ({
+                        id: `comment_${id}`,
+                        data: () => ({ text: `Comment ${id}` })
+                    }));
+                    callback({ forEach: (cb) => docs.forEach(cb) });
+                } else {
+                    callback({ forEach: () => {} });
                 }
-                return { forEach: () => {} };
+                return () => {};
             }
         }),
         doc: (id) => ({
             collection: (subName) => ({
                 orderBy: (field, direction) => ({
-                    get: async () => {
-                        getCalls++;
-                        return { forEach: () => {} };
+                    onSnapshot: (callback) => {
+                        snapshotCalls++;
+                        callback({ forEach: () => {} });
+                        return () => {};
                     }
                 })
             })
@@ -35,24 +34,24 @@ const mockFirestore = {
     }),
     collectionGroup: (name) => ({
         orderBy: (field, direction) => ({
-            get: async () => {
-                getCalls++;
+            onSnapshot: (callback) => {
+                snapshotCalls++;
                 if (name === 'replies') {
-                    return {
-                        forEach: (callback) => {
-                            [1, 2, 3, 4, 5].forEach(commentId => {
-                                [1, 2].forEach(replyId => {
-                                    callback({
-                                        id: `reply_${commentId}_${replyId}`,
-                                        ref: { parent: { parent: { id: `comment_${commentId}` } } },
-                                        data: () => ({ text: `Reply ${replyId} to comment_${commentId}` })
-                                    });
-                                });
+                    const docs = [];
+                    [1, 2, 3, 4, 5].forEach(commentId => {
+                        [1, 2].forEach(replyId => {
+                            docs.push({
+                                id: `reply_${commentId}_${replyId}`,
+                                ref: { parent: { parent: { id: `comment_${commentId}` } } },
+                                data: () => ({ text: `Reply ${replyId} to comment_${commentId}` })
                             });
-                        }
-                    };
+                        });
+                    });
+                    callback({ forEach: (cb) => docs.forEach(cb) });
+                } else {
+                    callback({ forEach: () => {} });
                 }
-                return { forEach: () => {} };
+                return () => {};
             }
         })
     })
@@ -60,38 +59,63 @@ const mockFirestore = {
 
 const db = mockFirestore;
 const commentsCollection = db.collection('comments');
+const { buildRepliesMap } = require('./utils.js');
 
 async function loadCommentsOptimized() {
     getCalls = 0;
-    const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
-    const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
+    snapshotCalls = 0;
 
-    const [commentsSnapshot, repliesSnapshot] = await Promise.all([commentsQuery, repliesQuery]);
+    let cachedComments = [];
+    let cachedReplies = [];
+
+    const commentsPromise = new Promise((resolve) => {
+        commentsCollection.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+            cachedComments = [];
+            snapshot.forEach((doc) => {
+                cachedComments.push({ id: doc.id, data: doc.data() });
+            });
+            resolve();
+        });
+    });
+
+    const repliesPromise = new Promise((resolve) => {
+        db.collectionGroup("replies").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+            cachedReplies = [];
+            snapshot.forEach((replyDoc) => {
+                cachedReplies.push({
+                    id: replyDoc.id,
+                    data: replyDoc.data(),
+                    parentId: replyDoc.ref.parent.parent.id
+                });
+            });
+            resolve();
+        });
+    });
+
+    await Promise.all([commentsPromise, repliesPromise]);
 
     const repliesMap = new Map();
-    repliesSnapshot.forEach((replyDoc) => {
-        const reply = replyDoc.data();
-        const parentId = replyDoc.ref.parent.parent.id;
-        if (!repliesMap.has(parentId)) {
-            repliesMap.set(parentId, []);
+    cachedReplies.forEach((reply) => {
+        if (!repliesMap.has(reply.parentId)) {
+            repliesMap.set(reply.parentId, []);
         }
-        repliesMap.get(parentId).push(reply);
+        repliesMap.get(reply.parentId).push(reply.data);
     });
 
     const results = [];
-    commentsSnapshot.forEach((doc) => {
-        const comment = doc.data();
-        const commentId = doc.id;
+    cachedComments.forEach((commentObj) => {
+        const commentId = commentObj.id;
+        const comment = commentObj.data;
         const replies = repliesMap.get(commentId) || [];
         results.push({ commentId, text: comment.text, replies });
     });
 
-    return { results, getCalls };
+    return { results, getCalls, snapshotCalls };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    loadCommentsOptimized().then(({ results, getCalls }) => {
-        console.log(`Total Firestore get() calls: ${getCalls}`);
+if (require.main === module) {
+    loadCommentsOptimized().then(({ results, getCalls, snapshotCalls }) => {
+        console.log(`Total Firestore onSnapshot() registrations: ${snapshotCalls}`);
         console.log(`Total comments loaded: ${results.length}`);
         console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
     });
