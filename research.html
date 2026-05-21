@@ -69,6 +69,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="/__/firebase/init.js"></script>
     <script src="firebase-init.js"></script>
+    <script src="utils.js"></script>
 
     <script>
         firebase.auth().signInAnonymously().catch((error) => {
@@ -103,14 +104,15 @@
                     showCommentBox();
                 })
                 .catch(error => {
-                    console.error("Error adding document: ", error);
+                    alert("Error adding document: " + error);
                 });
             }
         }
 
         function deleteComment(id) {
-            commentsCollection.doc(id).delete().catch((error) => {
-                console.error("Error removing document: ", error);
+            commentsCollection.doc(id).delete().then(() => {
+            }).catch((error) => {
+                alert("Error removing document: " + error);
             });
         }
 
@@ -120,8 +122,10 @@
                 commentsCollection.doc(id).update({
                     text: newText
                 })
+                .then(() => {
+                })
                 .catch((error) => {
-                    console.error("Error updating document: ", error);
+                    alert("Error updating document: " + error);
                 });
             }
         }
@@ -136,22 +140,66 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 commentsCollection.doc(id).collection("replies").add(reply)
+                .then(() => {
+                })
                 .catch((error) => {
-                    console.error("Error adding reply: ", error);
+                    alert("Error adding reply: " + error);
                 });
             }
         }
 
-        let localComments = [];
-        let localRepliesMap = new Map();
+
+        let cachedComments = [];
+        let cachedReplies = [];
+        let unsubscribeComments = null;
+        let unsubscribeReplies = null;
+
+        function loadComments() {
+            if (unsubscribeComments) unsubscribeComments();
+            if (unsubscribeReplies) unsubscribeReplies();
+
+            unsubscribeComments = commentsCollection.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                cachedComments = [];
+                snapshot.forEach((doc) => {
+                    cachedComments.push({ id: doc.id, data: doc.data() });
+                });
+                renderComments();
+            }, (error) => {
+                console.error("Error loading comments: ", error);
+            });
+
+            unsubscribeReplies = db.collectionGroup("replies").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+                cachedReplies = [];
+                snapshot.forEach((replyDoc) => {
+                    cachedReplies.push({
+                        id: replyDoc.id,
+                        data: replyDoc.data(),
+                        parentId: replyDoc.ref.parent.parent.id
+                    });
+                });
+                renderComments();
+            }, (error) => {
+                console.error("Error loading replies: ", error);
+            });
+        }
 
         function renderComments() {
             const commentsList = document.getElementById('comments-list');
             commentsList.innerHTML = '';
-            const user = firebase.auth().currentUser;
 
-            localComments.forEach((doc) => {
-                const comment = doc.data();
+            const user = firebase.auth().currentUser;
+            const repliesMap = new Map();
+
+            cachedReplies.forEach((reply) => {
+                if (!repliesMap.has(reply.parentId)) {
+                    repliesMap.set(reply.parentId, []);
+                }
+                repliesMap.get(reply.parentId).push(reply.data);
+            });
+
+            cachedComments.forEach((commentObj) => {
+                const docId = commentObj.id;
+                const comment = commentObj.data;
                 const commentElement = document.createElement('div');
                 commentElement.classList.add('comment-box');
 
@@ -163,20 +211,20 @@
                 const replyButton = document.createElement('button');
                 replyButton.textContent = "Reply";
                 replyButton.classList.add('btn');
-                replyButton.onclick = () => replyToComment(doc.id);
+                replyButton.onclick = () => replyToComment(docId);
                 actions.appendChild(replyButton);
 
                 if (user && user.uid === comment.authorId) {
                     const editButton = document.createElement('button');
                     editButton.textContent = "Edit";
                     editButton.classList.add('btn');
-                    editButton.onclick = () => editComment(doc.id, comment.text);
+                    editButton.onclick = () => editComment(docId, comment.text);
                     actions.appendChild(editButton);
 
                     const deleteButton = document.createElement('button');
                     deleteButton.textContent = "Delete";
                     deleteButton.classList.add('btn');
-                    deleteButton.onclick = () => deleteComment(doc.id);
+                    deleteButton.onclick = () => deleteComment(docId);
                     actions.appendChild(deleteButton);
                 }
 
@@ -187,7 +235,7 @@
                 repliesList.style.marginLeft = "20px";
                 commentElement.appendChild(repliesList);
 
-                const replies = localRepliesMap.get(doc.id) || [];
+                const replies = repliesMap.get(docId) || [];
                 replies.forEach((reply) => {
                     const replyElement = document.createElement('div');
                     replyElement.classList.add('comment-box');
@@ -196,30 +244,6 @@
                 });
 
                 commentsList.appendChild(commentElement);
-            });
-        }
-
-        function initListeners() {
-            commentsCollection.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-                localComments = snapshot.docs;
-                renderComments();
-            }, (error) => {
-                console.error("Error listening to comments: ", error);
-            });
-
-            db.collectionGroup("replies").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-                localRepliesMap.clear();
-                snapshot.forEach((replyDoc) => {
-                    const reply = replyDoc.data();
-                    const parentId = replyDoc.ref.parent.parent.id;
-                    if (!localRepliesMap.has(parentId)) {
-                        localRepliesMap.set(parentId, []);
-                    }
-                    localRepliesMap.get(parentId).push(reply);
-                });
-                renderComments();
-            }, (error) => {
-                console.error("Error listening to replies: ", error);
             });
         }
 
