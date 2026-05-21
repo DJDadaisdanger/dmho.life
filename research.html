@@ -93,7 +93,7 @@
                     showCommentBox();
                 })
                 .catch(error => {
-                    console.error("Error adding document: ", error);
+                    alert("Error adding document: " + error);
                 });
             }
         }
@@ -101,7 +101,7 @@
         function deleteComment(id) {
             commentsCollection.doc(id).delete().then(() => {
             }).catch((error) => {
-                console.error("Error removing document: ", error);
+                alert("Error removing document: " + error);
             });
         }
 
@@ -114,7 +114,7 @@
                 .then(() => {
                 })
                 .catch((error) => {
-                    console.error("Error updating document: ", error);
+                    alert("Error updating document: " + error);
                 });
             }
         }
@@ -132,7 +132,7 @@
                 .then(() => {
                 })
                 .catch((error) => {
-                    console.error("Error adding reply: ", error);
+                    alert("Error adding reply: " + error);
                 });
             }
         }
