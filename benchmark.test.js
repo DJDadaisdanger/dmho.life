@@ -1,12 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadCommentsOptimized } = require('./benchmark.js');
+const { loadCommentsOptimized, db } = require('./benchmark.js');
 
 test('loadCommentsOptimized returns correct results and call count', async (t) => {
-    const { results, getCalls } = await loadCommentsOptimized();
+    const { results, getCalls, snapshotCalls } = await loadCommentsOptimized();
 
     // Verify number of Firestore get() calls
-    assert.strictEqual(getCalls, 2, 'Should make exactly 2 Firestore get() calls');
+    assert.strictEqual(snapshotCalls, 2, 'Should make exactly 2 Firestore onSnapshot() registrations');
 
     // Verify number of comments loaded
     assert.strictEqual(results.length, 5, 'Should load 5 comments');
@@ -29,24 +29,24 @@ test('each comment has the correct number of replies', async (t) => {
     });
 });
 
-test('handles comments without replies correctly', async (t) => {
-    const { db } = require('./benchmark.js');
+test('loadCommentsOptimized handles errors (rejects promise)', async (t) => {
     const originalCollectionGroup = db.collectionGroup;
-
     db.collectionGroup = (name) => ({
         orderBy: () => ({
-            get: async () => ({
-                forEach: () => {}
-            })
+            get: async () => {
+                throw new Error('Simulated network error');
+            }
         })
     });
 
     try {
-        const { results } = await loadCommentsOptimized();
-        assert.strictEqual(results.length, 5, 'Should load 5 comments');
-        results.forEach(comment => {
-            assert.deepStrictEqual(comment.replies, [], `Comment ${comment.commentId} should have an empty replies array`);
-        });
+        await assert.rejects(
+            async () => { await loadCommentsOptimized(); },
+            (err) => {
+                assert.strictEqual(err.message, 'Simulated network error');
+                return true;
+            }
+        );
     } finally {
         db.collectionGroup = originalCollectionGroup;
     }
