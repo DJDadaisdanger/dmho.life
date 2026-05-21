@@ -13,13 +13,13 @@
     <canvas id="myCanvas" width="800" height="300"></canvas>
     <script src="points.js"></script>
     <script>
-      var canvas = document.getElementById('myCanvas');
-      var ctx = canvas.getContext('2d');
-      var width = canvas.width;
-      var height = canvas.height;
+      const canvas = document.getElementById('myCanvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
 
-      var mouseX = -1000;
-      var mouseY = -1000;
+      let mouseX = -1000;
+      let mouseY = -1000;
 
       var canvasRect = canvas.getBoundingClientRect();
       var updateRect = function() {
