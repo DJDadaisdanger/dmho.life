@@ -176,11 +176,13 @@
               };
       })();
 
+      var mouse = new Vector(mouseX, mouseY);
       function draw() {
           ctx.fillStyle = '#000';
           ctx.fillRect(0, 0, width, height);
 
-          var mouse = new Vector(mouseX, mouseY);
+          mouse.x = mouseX;
+          mouse.y = mouseY;
           for (var i = 0; i < vehicles.length; i++) {
               var v = vehicles[i];
               v.behaviors(mouse);
