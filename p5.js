@@ -25127,6 +25127,19 @@
                 break;
               }
 
+              // TODO(deanm): We should never really get here, we should have received
+              // a clear code at the start of the stream.  But some encoders seem to
+              // mess this up.  It should just be dictionary[code]... but doing that
+              // without a clear code means we haven't initialized the dictionary
+              if (prev_code === null) {
+                if (code >= clear_code) {
+                  console.warn('Not a clear code and not in dictionary');
+                }
+                output[op++] = code;
+                prev_code = code;
+                continue;
+              }
+
               // We have a similar situation as the decoder, where we want to store
               // variable length entries (code table entries), but we want to do in a
               // faster manner than an array of arrays.  The code below stores sort of a
