@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'node:url';
 
-let getCalls = 0;
 let snapshotCalls = 0;
 
 const mockFirestore = {
@@ -62,7 +61,6 @@ const commentsCollection = db.collection('comments');
 const { buildRepliesMap } = require('./utils.js');
 
 async function loadCommentsOptimized() {
-    getCalls = 0;
     snapshotCalls = 0;
 
     let cachedComments = [];
@@ -110,11 +108,11 @@ async function loadCommentsOptimized() {
         results.set(commentId, { commentId, text: comment.text, replies });
     });
 
-    return { results, getCalls, snapshotCalls };
+    return { results, snapshotCalls };
 }
 
 if (require.main === module) {
-    loadCommentsOptimized().then(({ results, getCalls, snapshotCalls }) => {
+    loadCommentsOptimized().then(({ results, snapshotCalls }) => {
         console.log(`Total Firestore onSnapshot() registrations: ${snapshotCalls}`);
         console.log(`Total comments loaded: ${results.length}`);
         console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
