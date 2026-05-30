@@ -72,8 +72,9 @@
     <script src="utils.js"></script>
 
     <script>
-        firebase.auth().signInAnonymously().catch((error) => {
-            console.error("Error signing in anonymously: ", error);
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch((error) => {
+            console.error("Error signing in with Google: ", error);
         });
 
         fetch('research.md')
