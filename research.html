@@ -28,13 +28,23 @@
             border: 1px solid #555;
         }
         .btn {
-            padding: 10px 15px;
-            background-color: #00ffdd;
-            color: black;
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #00e5ff;
+            color: #000012;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.3s ease;
             border: none;
             cursor: pointer;
             margin-right: 10px;
             font-family: monospace;
+        }
+        .btn:hover {
+            background-color: #ffffff;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -62,16 +72,17 @@
     <script src="utils.js"></script>
 
     <script>
-        firebase.auth().signInAnonymously().catch((error) => {
-            console.error("Error signing in anonymously: ", error);
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch((error) => {
+            console.error("Error signing in with Google: ", error);
         });
 
         fetch('research.md')
             .then(response => response.text())
             .then(text => {
                 const dirtyHTML = marked.parse(text);
-                const cleanHTML = DOMPurify.sanitize(dirtyHTML);
-                document.getElementById('content').innerHTML = cleanHTML;
+                const cleanNode = DOMPurify.sanitize(dirtyHTML, { RETURN_DOM_FRAGMENT: true });
+                document.getElementById('content').replaceChildren(cleanNode);
             });
         
         function showCommentBox() {
@@ -303,8 +314,10 @@
         let isInitialLoad = true;
         firebase.auth().onAuthStateChanged((user) => {
             if (isInitialLoad) {
-                loadComments();
+                initListeners();
                 isInitialLoad = false;
+            } else {
+                renderComments(); // Re-render if auth state changes (e.g. login)
             }
         });
     </script>
