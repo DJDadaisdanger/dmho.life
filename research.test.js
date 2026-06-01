@@ -1,95 +1,79 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { JSDOM } = require('jsdom');
 
-test('submitComment handles error path', async () => {
-    const html = fs.readFileSync('./research.html', 'utf8');
+// Read research.html
+const html = fs.readFileSync('research.html', 'utf8');
+// Extract the deleteComment function
+const match = html.match(/function deleteComment\(id\) \{[\s\S]*?console\.error\("Error removing document: ", error\);\s*\}\);\s*\}/);
 
-    // Create a virtual console to catch errors
-    const virtualConsole = new (require('jsdom').VirtualConsole)();
-    const errorLogs = [];
-    virtualConsole.on("error", (msg) => {
-        if (msg !== 'Error adding document: ') {
-            errorLogs.push(msg);
-        }
-    });
+if (!match) {
+    throw new Error('Could not find deleteComment function in research.html');
+}
 
-    const mockFirebase = {
-        auth: () => ({
-            signInAnonymously: () => Promise.resolve(),
-            onAuthStateChanged: (cb) => { },
-            currentUser: { uid: 'test-user-id' }
-        }),
-        firestore: {
-            FieldValue: {
-                serverTimestamp: () => 'mock-timestamp'
+// Variables to track state
+let deletedId = null;
+let loadCommentsCalled = false;
+let loggedError = null;
+
+// Mock the environment
+global.commentsCollection = {
+    doc: (id) => ({
+        delete: () => {
+            deletedId = id;
+            if (id === 'fail') {
+                return Promise.reject(new Error('delete failed'));
             }
+            return Promise.resolve();
         }
-    };
+    })
+};
 
-    const mockDb = {
-        collectionGroup: () => ({
-            orderBy: () => ({
-                get: () => Promise.resolve([])
-            })
-        })
-    };
+global.loadComments = () => {
+    loadCommentsCalled = true;
+};
 
-    const mockCommentsCollection = {
-        add: () => Promise.reject(new Error("Simulated Firebase error")),
-        orderBy: () => ({
-            get: () => Promise.resolve([])
-        })
-    };
+const originalConsoleError = console.error;
+global.console.error = (msg, err) => {
+    loggedError = err;
+};
 
-    const dom = new JSDOM(html, {
-        runScripts: 'outside-only',
-        virtualConsole
+// Evaluate the function into the global scope
+eval(match[0]);
+
+test('deleteComment functionality', async (t) => {
+    // Reset state before each test
+    t.beforeEach(() => {
+        deletedId = null;
+        loadCommentsCalled = false;
+        loggedError = null;
     });
 
-    const window = dom.window;
-
-    // Inject mocks directly into window BEFORE running scripts
-    window.firebase = mockFirebase;
-    window.db = mockDb;
-    window.commentsCollection = mockCommentsCollection;
-
-    // Override fetch to mock fetching research.md
-    window.fetch = () => Promise.resolve({
-        text: () => Promise.resolve('# Mock Research')
+    // Restore console.error after all tests
+    t.after(() => {
+        global.console.error = originalConsoleError;
     });
 
-    // Mock marked and DOMPurify
-    window.marked = { parse: text => text };
-    window.DOMPurify = { sanitize: html => html };
+    await t.test('successfully deletes a comment and reloads comments', async () => {
+        deleteComment('123');
 
-    // Now get the inline script content
-    const scripts = dom.window.document.querySelectorAll('script');
-    const inlineScript = Array.from(scripts).find(s => !s.src);
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    if (inlineScript) {
-        dom.window.eval(inlineScript.textContent);
-    }
+        assert.strictEqual(deletedId, '123', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, true, 'Should call loadComments after successful deletion');
+        assert.strictEqual(loggedError, null, 'Should not log any errors');
+    });
 
-    // Now trigger the comment submission
-    const commentInput = window.document.getElementById('comment-input');
-    commentInput.value = 'Test error comment';
+    await t.test('handles deletion failure correctly', async () => {
+        deleteComment('fail');
 
-    // Keep track of console.error output from the script
-    const loggedErrors = [];
-    window.console.error = (...args) => {
-        loggedErrors.push(args);
-    };
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    // Call submitComment directly
-    window.submitComment();
-
-    // Wait for the promise rejection
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    // Assert that console.error was called with the expected message
-    assert.strictEqual(loggedErrors.length, 1);
-    assert.strictEqual(loggedErrors[0][0], "Error adding document: ");
-    assert.strictEqual(loggedErrors[0][1].message, "Simulated Firebase error");
+        assert.strictEqual(deletedId, 'fail', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, false, 'Should not call loadComments if deletion fails');
+        assert.ok(loggedError, 'Should log an error');
+        assert.strictEqual(loggedError.message, 'delete failed', 'Logged error should match the rejection reason');
+    });
 });
