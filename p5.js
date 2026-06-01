@@ -84679,7 +84679,15 @@
                       } else {
                         var vertParts = vertString.split('/');
                         for (var i = 0; i < vertParts.length; i++) {
-                          vertParts[i] = parseInt(vertParts[i]) - 1;
+                          var v = parseInt(vertParts[i]);
+                          if (v < 0) {
+                            if (i === 0) v = loadedVerts.v.length + v;
+                            else if (i === 1) v = loadedVerts.vt.length + v;
+                            else if (i === 2) v = loadedVerts.vn.length + v;
+                          } else {
+                            v = v - 1;
+                          }
+                          vertParts[i] = v;
                         }
 
                         vertIndex = indexedVerts[vertString] = model.vertices.length;
@@ -91098,6 +91106,7 @@
             this.attributes = {};
             this._loadedUniforms = false;
             this.uniforms = {};
+            this._compiled = false;
             this._bound = false;
             this.samplers = [];
           };
@@ -91119,35 +91128,7 @@
               // 1. creating and getting a gl id for the shader program,
               // 2. compliling its vertex & fragment sources,
               // 3. linking the vertex and fragment shaders
-              this._vertShader = gl.createShader(gl.VERTEX_SHADER);
-              //load in our default vertex shader
-              gl.shaderSource(this._vertShader, this._vertSrc);
-              gl.compileShader(this._vertShader);
-              // if our vertex shader failed compilation?
-              if (!gl.getShaderParameter(this._vertShader, gl.COMPILE_STATUS)) {
-                console.error(
-                  'Yikes! An error occurred compiling the vertex shader:'.concat(
-                    gl.getShaderInfoLog(this._vertShader)
-                  )
-                );
-
-                return null;
-              }
-
-              this._fragShader = gl.createShader(gl.FRAGMENT_SHADER);
-              //load in our material frag shader
-              gl.shaderSource(this._fragShader, this._fragSrc);
-              gl.compileShader(this._fragShader);
-              // if our frag shader failed compilation?
-              if (!gl.getShaderParameter(this._fragShader, gl.COMPILE_STATUS)) {
-                console.error(
-                  'Darn! An error occurred compiling the fragment shader:'.concat(
-                    gl.getShaderInfoLog(this._fragShader)
-                  )
-                );
-
-                return null;
-              }
+              if (!this.compile()) return null;
 
               this._glProgram = gl.createProgram();
               gl.attachShader(this._glProgram, this._vertShader);
@@ -91256,6 +91237,11 @@
             this._loadedUniforms = true;
           };
 
+          /**
+           * Compiles the shader program.
+           * @method compile
+           * @chainable
+           */
           _main.default.Shader.prototype.compile = function() {
             this.init();
           };
