@@ -33,7 +33,7 @@ test('loadCommentsOptimized handles errors (rejects promise)', async (t) => {
     const originalCollectionGroup = db.collectionGroup;
     db.collectionGroup = (name) => ({
         orderBy: () => ({
-            get: async () => {
+            onSnapshot: () => {
                 throw new Error('Simulated network error');
             }
         })
