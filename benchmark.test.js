@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { loadCommentsOptimized, db } = require('./benchmark.js');
 
 test('loadCommentsOptimized returns correct results and call count', async (t) => {
-    const { results, getCalls, snapshotCalls } = await loadCommentsOptimized();
+    const { results, snapshotCalls } = await loadCommentsOptimized();
 
     // Verify number of Firestore get() calls
     assert.strictEqual(snapshotCalls, 2, 'Should make exactly 2 Firestore onSnapshot() registrations');
@@ -33,7 +33,7 @@ test('loadCommentsOptimized handles errors (rejects promise)', async (t) => {
     const originalCollectionGroup = db.collectionGroup;
     db.collectionGroup = (name) => ({
         orderBy: () => ({
-            get: async () => {
+            onSnapshot: () => {
                 throw new Error('Simulated network error');
             }
         })
