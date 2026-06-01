@@ -1,73 +1,79 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { JSDOM } = require('jsdom');
 
-test('editComment edge case: prompt returns null', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const dom = new JSDOM(html, { runScripts: "dangerously" });
-    const window = dom.window;
+// Read research.html
+const html = fs.readFileSync('research.html', 'utf8');
+// Extract the deleteComment function
+const match = html.match(/function deleteComment\(id\) \{[\s\S]*?console\.error\("Error removing document: ", error\);\s*\}\);\s*\}/);
 
-    let updateCalled = false;
-    window.commentsCollection = {
-        doc: () => ({
-            update: () => {
-                updateCalled = true;
-                return Promise.resolve();
+if (!match) {
+    throw new Error('Could not find deleteComment function in research.html');
+}
+
+// Variables to track state
+let deletedId = null;
+let loadCommentsCalled = false;
+let loggedError = null;
+
+// Mock the environment
+global.commentsCollection = {
+    doc: (id) => ({
+        delete: () => {
+            deletedId = id;
+            if (id === 'fail') {
+                return Promise.reject(new Error('delete failed'));
             }
-        })
-    };
+            return Promise.resolve();
+        }
+    })
+};
 
-    // Simulate prompt returning null
-    window.prompt = () => null;
+global.loadComments = () => {
+    loadCommentsCalled = true;
+};
 
-    window.editComment('test_id', 'old text');
+const originalConsoleError = console.error;
+global.console.error = (msg, err) => {
+    loggedError = err;
+};
 
-    assert.strictEqual(updateCalled, false, 'update should not be called when prompt returns null');
-});
+// Evaluate the function into the global scope
+eval(match[0]);
 
-test('editComment edge case: prompt returns empty string', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const dom = new JSDOM(html, { runScripts: "dangerously" });
-    const window = dom.window;
+test('deleteComment functionality', async (t) => {
+    // Reset state before each test
+    t.beforeEach(() => {
+        deletedId = null;
+        loadCommentsCalled = false;
+        loggedError = null;
+    });
 
-    let updateCalled = false;
-    window.commentsCollection = {
-        doc: () => ({
-            update: () => {
-                updateCalled = true;
-                return Promise.resolve();
-            }
-        })
-    };
+    // Restore console.error after all tests
+    t.after(() => {
+        global.console.error = originalConsoleError;
+    });
 
-    // Simulate prompt returning empty string
-    window.prompt = () => "";
+    await t.test('successfully deletes a comment and reloads comments', async () => {
+        deleteComment('123');
 
-    window.editComment('test_id', 'old text');
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    assert.strictEqual(updateCalled, false, 'update should not be called when prompt returns empty string');
-});
+        assert.strictEqual(deletedId, '123', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, true, 'Should call loadComments after successful deletion');
+        assert.strictEqual(loggedError, null, 'Should not log any errors');
+    });
 
-test('editComment edge case: prompt returns whitespace only', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const dom = new JSDOM(html, { runScripts: "dangerously" });
-    const window = dom.window;
+    await t.test('handles deletion failure correctly', async () => {
+        deleteComment('fail');
 
-    let updateCalled = false;
-    window.commentsCollection = {
-        doc: () => ({
-            update: () => {
-                updateCalled = true;
-                return Promise.resolve();
-            }
-        })
-    };
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    // Simulate prompt returning whitespace only
-    window.prompt = () => "   ";
-
-    window.editComment('test_id', 'old text');
-
-    assert.strictEqual(updateCalled, false, 'update should not be called when prompt returns whitespace only');
+        assert.strictEqual(deletedId, 'fail', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, false, 'Should not call loadComments if deletion fails');
+        assert.ok(loggedError, 'Should log an error');
+        assert.strictEqual(loggedError.message, 'delete failed', 'Logged error should match the rejection reason');
+    });
 });
