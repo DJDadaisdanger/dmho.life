@@ -80,8 +80,8 @@
             .then(response => response.text())
             .then(text => {
                 const dirtyHTML = marked.parse(text);
-                const cleanHTML = DOMPurify.sanitize(dirtyHTML);
-                document.getElementById('content').innerHTML = cleanHTML;
+                const cleanNode = DOMPurify.sanitize(dirtyHTML, { RETURN_DOM_FRAGMENT: true });
+                document.getElementById('content').replaceChildren(cleanNode);
             });
         
         function showCommentBox() {
