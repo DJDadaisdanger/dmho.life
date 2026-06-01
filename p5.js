@@ -67049,8 +67049,7 @@
            *
            * http://blogs.adobe.com/webplatform/2013/01/28/blending-features-in-canvas/
            */
-          // TODO: - Accept an array of alpha values.
-          //       - Use other channels of an image. p5 uses the
+          // TODO: - Use other channels of an image. p5 uses the
           //       blue channel (which feels kind of arbitrary). Note: at the
           //       moment this method does not match native processing's original
           //       functionality exactly.
