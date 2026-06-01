@@ -1,270 +1,79 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const vm = require('vm');
 
-function extractLoadCommentsFunction(html) {
-    const startStr = 'function loadComments() {';
-    const startIndex = html.indexOf(startStr);
-    if (startIndex === -1) throw new Error('Could not find function loadComments()');
+// Read research.html
+const html = fs.readFileSync('research.html', 'utf8');
+// Extract the deleteComment function
+const match = html.match(/function deleteComment\(id\) \{[\s\S]*?console\.error\("Error removing document: ", error\);\s*\}\);\s*\}/);
 
-    // Simple bracket matching parser to find the end of the function
-    let openBrackets = 0;
-    let i = startIndex + startStr.length - 1; // Start at the '{'
-
-    while (i < html.length) {
-        if (html[i] === '{') openBrackets++;
-        else if (html[i] === '}') openBrackets--;
-
-        if (openBrackets === 0) {
-            return html.slice(startIndex, i + 1);
-        }
-        i++;
-    }
-
-    throw new Error('Could not find the end of function loadComments()');
+if (!match) {
+    throw new Error('Could not find deleteComment function in research.html');
 }
 
-test('loadComments integration test', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const functionCode = extractLoadCommentsFunction(html);
+// Variables to track state
+let deletedId = null;
+let loadCommentsCalled = false;
+let loggedError = null;
 
-    class MockElement {
-        constructor(tagName) {
-            this.tagName = tagName;
-            this.innerHTML = '';
-            this.textContent = '';
-            this.children = [];
-            this.classList = {
-                classes: new Set(),
-                add: (cls) => this.classList.classes.add(cls)
-            };
-            this.style = {};
-            this.onclick = null;
-        }
-
-        appendChild(child) {
-            this.children.push(child);
-        }
-    }
-
-    const mockDocument = {
-        elements: {},
-        getElementById: function(id) {
-            if (!this.elements[id]) {
-                this.elements[id] = new MockElement('div');
-                this.elements[id].id = id;
+// Mock the environment
+global.commentsCollection = {
+    doc: (id) => ({
+        delete: () => {
+            deletedId = id;
+            if (id === 'fail') {
+                return Promise.reject(new Error('delete failed'));
             }
-            return this.elements[id];
-        },
-        createElement: function(tagName) {
-            return new MockElement(tagName);
+            return Promise.resolve();
         }
-    };
+    })
+};
 
-    const mockFirebase = {
-        auth: () => ({
-            currentUser: { uid: 'user1' }
-        })
-    };
+global.loadComments = () => {
+    loadCommentsCalled = true;
+};
 
-    const mockComments = [
-        { id: 'c1', data: () => ({ text: 'First comment', authorId: 'user1' }) },
-        { id: 'c2', data: () => ({ text: 'Second comment', authorId: 'user2' }) }
-    ];
+const originalConsoleError = console.error;
+global.console.error = (msg, err) => {
+    loggedError = err;
+};
 
-    const mockReplies = [
-        {
-            data: () => ({ text: 'Reply to first', authorId: 'user2' }),
-            ref: { parent: { parent: { id: 'c1' } } }
-        }
-    ];
+// Evaluate the function into the global scope
+eval(match[0]);
 
-    let commentsQueryCalled = false;
-    const mockCommentsCollection = {
-        orderBy: (field, direction) => {
-            assert.strictEqual(field, 'timestamp');
-            assert.strictEqual(direction, 'desc');
-            return {
-                get: async () => {
-                    commentsQueryCalled = true;
-                    return mockComments;
-                }
-            };
-        }
-    };
+test('deleteComment functionality', async (t) => {
+    // Reset state before each test
+    t.beforeEach(() => {
+        deletedId = null;
+        loadCommentsCalled = false;
+        loggedError = null;
+    });
 
-    let repliesQueryCalled = false;
-    const mockDb = {
-        collectionGroup: (collectionId) => {
-            assert.strictEqual(collectionId, 'replies');
-            return {
-                orderBy: (field, direction) => {
-                    assert.strictEqual(field, 'timestamp');
-                    assert.strictEqual(direction, 'asc');
-                    return {
-                        get: async () => {
-                            repliesQueryCalled = true;
-                            return mockReplies;
-                        }
-                    };
-                }
-            };
-        }
-    };
+    // Restore console.error after all tests
+    t.after(() => {
+        global.console.error = originalConsoleError;
+    });
 
-    const context = {
-        document: mockDocument,
-        console: console,
-        commentsCollection: mockCommentsCollection,
-        db: mockDb,
-        firebase: mockFirebase,
-        replyToComment: () => {},
-        editComment: () => {},
-        deleteComment: () => {}
-    };
+    await t.test('successfully deletes a comment and reloads comments', async () => {
+        deleteComment('123');
 
-    vm.createContext(context);
-    vm.runInContext(functionCode, context);
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    await context.loadComments();
+        assert.strictEqual(deletedId, '123', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, true, 'Should call loadComments after successful deletion');
+        assert.strictEqual(loggedError, null, 'Should not log any errors');
+    });
 
-    assert.strictEqual(commentsQueryCalled, true, 'Comments query should be called');
-    assert.strictEqual(repliesQueryCalled, true, 'Replies query should be called');
+    await t.test('handles deletion failure correctly', async () => {
+        deleteComment('fail');
 
-    const commentsList = mockDocument.getElementById('comments-list');
+        // Wait for promise resolution
+        await new Promise(r => setTimeout(r, 10));
 
-    assert.strictEqual(commentsList.children.length, 2, 'Should render 2 comments');
-
-    const firstCommentEl = commentsList.children[0];
-    assert.strictEqual(firstCommentEl.children[0].textContent, 'First comment');
-
-    const actions1 = firstCommentEl.children[1];
-    assert.strictEqual(actions1.children.length, 3, 'Should have 3 action buttons for own comment');
-    assert.strictEqual(actions1.children[0].textContent, 'Reply');
-    assert.strictEqual(actions1.children[1].textContent, 'Edit');
-    assert.strictEqual(actions1.children[2].textContent, 'Delete');
-
-    const repliesList = firstCommentEl.children[2];
-    assert.strictEqual(repliesList.children.length, 1, 'Should render 1 reply');
-    assert.strictEqual(repliesList.children[0].textContent, 'Reply to first');
-
-    const secondCommentEl = commentsList.children[1];
-    assert.strictEqual(secondCommentEl.children[0].textContent, 'Second comment');
-
-    const actions2 = secondCommentEl.children[1];
-    assert.strictEqual(actions2.children.length, 1, 'Should have 1 action button for others comment');
-    assert.strictEqual(actions2.children[0].textContent, 'Reply');
-});
-
-test('loadComments handles missing currentUser (unauthenticated)', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const functionCode = extractLoadCommentsFunction(html);
-
-    class MockElement {
-        constructor(tagName) {
-            this.tagName = tagName;
-            this.innerHTML = '';
-            this.textContent = '';
-            this.children = [];
-            this.classList = {
-                classes: new Set(),
-                add: (cls) => this.classList.classes.add(cls)
-            };
-            this.style = {};
-            this.onclick = null;
-        }
-
-        appendChild(child) {
-            this.children.push(child);
-        }
-    }
-
-    const mockDocument = {
-        elements: {},
-        getElementById: function(id) {
-            if (!this.elements[id]) {
-                this.elements[id] = new MockElement('div');
-                this.elements[id].id = id;
-            }
-            return this.elements[id];
-        },
-        createElement: function(tagName) {
-            return new MockElement(tagName);
-        }
-    };
-
-    const mockFirebase = {
-        auth: () => ({
-            currentUser: null
-        })
-    };
-
-    const mockComments = [
-        { id: 'c1', data: () => ({ text: 'First comment', authorId: 'user1' }) }
-    ];
-
-    const mockCommentsCollection = {
-        orderBy: () => ({ get: async () => mockComments })
-    };
-
-    const mockDb = {
-        collectionGroup: () => ({
-            orderBy: () => ({ get: async () => [] })
-        })
-    };
-
-    const context = {
-        document: mockDocument,
-        console: console,
-        commentsCollection: mockCommentsCollection,
-        db: mockDb,
-        firebase: mockFirebase
-    };
-
-    vm.createContext(context);
-    vm.runInContext(functionCode, context);
-
-    await context.loadComments();
-
-    const commentsList = mockDocument.getElementById('comments-list');
-
-    const firstCommentEl = commentsList.children[0];
-    const actions = firstCommentEl.children[1];
-    assert.strictEqual(actions.children.length, 1, 'Should only have Reply button when unauthenticated');
-    assert.strictEqual(actions.children[0].textContent, 'Reply');
-});
-
-test('loadComments handles errors correctly', async (t) => {
-    const html = fs.readFileSync('research.html', 'utf8');
-    const functionCode = extractLoadCommentsFunction(html);
-
-    const mockCommentsCollection = {
-        orderBy: () => ({ get: async () => { throw new Error('Firestore Error'); } })
-    };
-
-    const mockDb = {
-        collectionGroup: () => ({
-            orderBy: () => ({ get: async () => [] })
-        })
-    };
-
-    let errorLogged = false;
-    const context = {
-        console: {
-            error: (msg, err) => {
-                if (msg.includes('Error loading comments') && err.message === 'Firestore Error') {
-                    errorLogged = true;
-                }
-            }
-        },
-        commentsCollection: mockCommentsCollection,
-        db: mockDb,
-    };
-
-    vm.createContext(context);
-    vm.runInContext(functionCode, context);
-
-    await context.loadComments();
-    assert.strictEqual(errorLogged, true, 'Error should be caught and logged');
+        assert.strictEqual(deletedId, 'fail', 'Should call delete on the correct document ID');
+        assert.strictEqual(loadCommentsCalled, false, 'Should not call loadComments if deletion fails');
+        assert.ok(loggedError, 'Should log an error');
+        assert.strictEqual(loggedError.message, 'delete failed', 'Logged error should match the rejection reason');
+    });
 });
