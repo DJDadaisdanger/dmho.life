@@ -5,105 +5,198 @@
     <style>
         body {
             background-color: #000;
+            margin: 0;
         }
     </style>
-    <script src="p5.js"></script>
   </head>
   <body>
-    
+    <canvas id="myCanvas" width="800" height="300"></canvas>
+    <script src="points.js"></script>
     <script>
-var vehicles = [];
-var font; 
-var points;
-function preload(){
-  font = loadFont('font.TTF')  
-}
-function setup() {
-createCanvas(800, 300);
-background(0);
-textFont(font);
+      const canvas = document.getElementById('myCanvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+
+      let mouseX = -1000;
+      let mouseY = -1000;
+
+      var canvasRect = canvas.getBoundingClientRect();
+      var updateRect = function() {
+          canvasRect = canvas.getBoundingClientRect();
+      };
+      window.addEventListener('resize', updateRect, {passive: true});
+      window.addEventListener('scroll', updateRect, {passive: true});
+
+      canvas.addEventListener('mousemove', function(e) {
+          mouseX = e.clientX - canvasRect.left;
+          mouseY = e.clientY - canvasRect.top;
+      });
+
+      canvas.addEventListener('touchmove', function(e) {
+          if (e.touches.length > 0) {
+              mouseX = e.touches[0].clientX - canvasRect.left;
+              mouseY = e.touches[0].clientY - canvasRect.top;
+              e.preventDefault();
+          }
+      }, {passive: false});
+      canvas.addEventListener('touchstart', function(e) {
+          if (e.touches.length > 0) {
+              mouseX = e.touches[0].clientX - canvasRect.left;
+              mouseY = e.touches[0].clientY - canvasRect.top;
+          }
+      }, {passive: false});
+      canvas.addEventListener('touchend', function(e) {
+          mouseX = -1000;
+          mouseY = -1000;
+      });
+      canvas.addEventListener('mouseleave', function(e) {
+          mouseX = -1000;
+          mouseY = -1000;
+      });
+
+      class Vector {
+          constructor(x, y) {
+              this.x = x || 0;
+              this.y = y || 0;
+          }
+          add(v) {
+              this.x += v.x;
+              this.y += v.y;
+              return this;
+          }
+          sub(v) {
+              this.x -= v.x;
+              this.y -= v.y;
+              return this;
+          }
+          mult(n) {
+              this.x *= n;
+              this.y *= n;
+              return this;
+          }
+          magSq() {
+              return this.x * this.x + this.y * this.y;
+          }
+          mag() {
+              return Math.sqrt(this.magSq());
+          }
+          setMag(n) {
+              const m = this.mag();
+              if (m !== 0) {
+                  this.mult(n / m);
+              }
+              return this;
+          }
+          limit(max) {
+              if (this.magSq() > max * max) {
+                  this.setMag(max);
+              }
+              return this;
+          }
+          static sub(v1, v2) {
+              return new Vector(v1.x - v2.x, v1.y - v2.y);
+          }
+          static random2D() {
+              const angle = Math.random() * Math.PI * 2;
+              return new Vector(Math.cos(angle), Math.sin(angle));
+          }
+      }
+
+      class Vehicle {
+          constructor(x, y) {
+              this.pos = new Vector(Math.random() * width, Math.random() * height);
+              this.target = new Vector(x, y);
+              this.vel = Vector.random2D();
+              this.acc = new Vector();
+              this.r = 8;
+              this.maxspeed = 10;
+              this.maxforce = 1;
+          }
+          behaviors(mouse) {
+              const arrive = this.arrive(this.target);
+              const flee = this.flee(mouse);
+              arrive.mult(1);
+              flee.mult(5);
+              this.applyForce(flee);
+              this.applyForce(arrive);
+          }
+          applyForce(f) {
+              this.acc.add(f);
+          }
+          update() {
+              this.pos.add(this.vel);
+              this.vel.add(this.acc);
+              this.acc.mult(0);
+          }
+          show() {
+              ctx.fillStyle = '#fff';
+              ctx.beginPath();
+              ctx.arc(this.pos.x, this.pos.y, 4, 0, Math.PI * 2);
+              ctx.fill();
+          }
+          arrive(target) {
+              const desired = Vector.sub(target, this.pos);
+              const d = desired.mag();
+              let speed = this.maxspeed;
+              if (d < 100) {
+                  speed = (d / 100) * this.maxspeed;
+              }
+              desired.setMag(speed);
+              const steer = Vector.sub(desired, this.vel);
+              steer.limit(this.maxforce);
+              return steer;
+          }
+          flee(target) {
+              const desired = Vector.sub(target, this.pos);
+              const d = desired.mag();
+              if (d < 50) {
+                  desired.setMag(this.maxspeed);
+                  desired.mult(-1);
+                  const steer = Vector.sub(desired, this.vel);
+                  steer.limit(this.maxforce);
+                  return steer;
+              } else {
+                  return new Vector(0, 0);
+              }
+          }
+      }
 
 
-points = font.textToPoints('DJDada',137,192,169);
-for(var i = 0;i < points.length;i++){
-  var pt = points[i];
-  var vehicle = new Vehicle(pt.x,pt.y);
-  vehicles.push(vehicle);
-}
-}
+      var vehicles = [];
+      for (var i = 0; i < rawPoints.length; i++) {
+          vehicles.push(new Vehicle(rawPoints[i].x, rawPoints[i].y));
+      }
 
-function draw() {
-background(0);
-for(var i = 0;i < points.length;i++){
-  var v = vehicles[i];
-  v.behaviors();
-  v.update();
-  v.show();
-}
-}
+      window.requestAnimFrame = (function() {
+          return window.requestAnimationFrame ||
+              window.webkitRequestAnimationFrame ||
+              window.mozRequestAnimationFrame ||
+              window.oRequestAnimationFrame ||
+              window.msRequestAnimationFrame ||
+              function(callback) {
+                  window.setTimeout(callback, 1000 / 60);
+              };
+      })();
 
-function Vehicle(x,y){
-    this.pos = createVector(random(width),random(height));
-    this.target = createVector(x,y);
-    this.vel = p5.Vector.random2D();
-    this.acc = createVector();
-    this.r = 8;
-    this.maxspeed = 10;
-    this.maxforce = 1;
-  }
-  
-  Vehicle.prototype.behaviors = function(){
-    var arrive = this.arrive(this.target);
-    var mouse = createVector(mouseX,mouseY);
-    var flee = this.flee(mouse);
-    arrive.mult(1);
-    flee.mult(5);
-    this.applyForce(flee);
-    this.applyForce(arrive);
-  }
-  
-  Vehicle.prototype.applyForce = function(f){
-   this.acc.add(f);
-  }
-  
-  Vehicle.prototype.update = function(){
-    this.pos.add(this.vel);
-    this.vel.add(this.acc);
-    this.acc.mult(0);
-  }
-  
-  Vehicle.prototype.show = function(){
-    stroke(255);
-    strokeWeight(8);
-    point(this.pos.x,this.pos.y);
-  }
-  
-  Vehicle.prototype.arrive = function(target){
-    var desired = p5.Vector.sub(target,this.pos);
-    var d = desired.mag();
-    var speed = this.maxspeed;
-    if (d < 100){
-     speed = map (d,0,100,0,this.maxspeed);
-    }
-    desired.setMag(speed);
-    var steer = p5.Vector.sub(desired,this.vel);
-    steer.limit(this.maxforce);
-    return steer;
-  }
-  
-  Vehicle.prototype.flee= function(target){
-    var desired = p5.Vector.sub(target,this.pos);
-    var d = desired.mag();
-    if(d < 50){
-    desired.setMag(this.maxspeed);
-    desired.mult(-1);
-    var steer = p5.Vector.sub(desired,this.vel);
-    steer.limit(this.maxforce);
-    return steer;
-    }else{
-      return createVector(0,0);
-    }
-  }
+      var mouse = new Vector(mouseX, mouseY);
+      function draw() {
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, width, height);
+
+          mouse.x = mouseX;
+          mouse.y = mouseY;
+          for (var i = 0; i < vehicles.length; i++) {
+              var v = vehicles[i];
+              v.behaviors(mouse);
+              v.update();
+              v.show();
+          }
+
+          window.requestAnimationFrame(draw);
+      }
+
+      draw();
     </script>
   </body>
 </html>
