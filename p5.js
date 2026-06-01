@@ -67049,8 +67049,7 @@
            *
            * http://blogs.adobe.com/webplatform/2013/01/28/blending-features-in-canvas/
            */
-          // TODO: - Accept an array of alpha values.
-          //       - Use other channels of an image. p5 uses the
+          // TODO: - Use other channels of an image. p5 uses the
           //       blue channel (which feels kind of arbitrary). Note: at the
           //       moment this method does not match native processing's original
           //       functionality exactly.
@@ -84680,7 +84679,15 @@
                       } else {
                         var vertParts = vertString.split('/');
                         for (var i = 0; i < vertParts.length; i++) {
-                          vertParts[i] = parseInt(vertParts[i]) - 1;
+                          var v = parseInt(vertParts[i]);
+                          if (v < 0) {
+                            if (i === 0) v = loadedVerts.v.length + v;
+                            else if (i === 1) v = loadedVerts.vt.length + v;
+                            else if (i === 2) v = loadedVerts.vn.length + v;
+                          } else {
+                            v = v - 1;
+                          }
+                          vertParts[i] = v;
                         }
 
                         vertIndex = indexedVerts[vertString] = model.vertices.length;
@@ -90758,28 +90765,29 @@
 
             fillShader.setUniform('uUseLighting', this._enableLighting);
 
-            var pointLightCount = this.pointLightDiffuseColors.length / 3;
-            fillShader.setUniform('uPointLightCount', pointLightCount);
-            fillShader.setUniform('uPointLightLocation', this.pointLightPositions);
-            fillShader.setUniform('uPointLightDiffuseColors', this.pointLightDiffuseColors);
+            if (this._enableLighting) {
+              var pointLightCount = this.pointLightDiffuseColors.length / 3;
+              fillShader.setUniform('uPointLightCount', pointLightCount);
+              fillShader.setUniform('uPointLightLocation', this.pointLightPositions);
+              fillShader.setUniform('uPointLightDiffuseColors', this.pointLightDiffuseColors);
 
-            fillShader.setUniform(
-              'uPointLightSpecularColors',
-              this.pointLightSpecularColors
-            );
+              fillShader.setUniform(
+                'uPointLightSpecularColors',
+                this.pointLightSpecularColors
+              );
 
-            var directionalLightCount = this.directionalLightDiffuseColors.length / 3;
-            fillShader.setUniform('uDirectionalLightCount', directionalLightCount);
-            fillShader.setUniform('uLightingDirection', this.directionalLightDirections);
-            fillShader.setUniform(
-              'uDirectionalDiffuseColors',
-              this.directionalLightDiffuseColors
-            );
+              var directionalLightCount = this.directionalLightDiffuseColors.length / 3;
+              fillShader.setUniform('uDirectionalLightCount', directionalLightCount);
+              fillShader.setUniform('uLightingDirection', this.directionalLightDirections);
+              fillShader.setUniform(
+                'uDirectionalDiffuseColors',
+                this.directionalLightDiffuseColors
+              );
 
-            fillShader.setUniform(
-              'uDirectionalSpecularColors',
-              this.directionalLightSpecularColors
-            );
+              fillShader.setUniform(
+                'uDirectionalSpecularColors',
+                this.directionalLightSpecularColors
+              );
 
             var ambientColor = [0, 0, 0];
             for (var i = 0; i < this.ambientLightColors.length; i += 3) {
@@ -90789,19 +90797,20 @@
             }
             fillShader.setUniform('uAmbientColor', ambientColor);
 
-            var spotLightCount = this.spotLightDiffuseColors.length / 3;
-            fillShader.setUniform('uSpotLightCount', spotLightCount);
-            fillShader.setUniform('uSpotLightAngle', this.spotLightAngle);
-            fillShader.setUniform('uSpotLightConc', this.spotLightConc);
-            fillShader.setUniform('uSpotLightDiffuseColors', this.spotLightDiffuseColors);
-            fillShader.setUniform('uSpotLightSpecularColors', this.spotLightSpecularColors);
+              var spotLightCount = this.spotLightDiffuseColors.length / 3;
+              fillShader.setUniform('uSpotLightCount', spotLightCount);
+              fillShader.setUniform('uSpotLightAngle', this.spotLightAngle);
+              fillShader.setUniform('uSpotLightConc', this.spotLightConc);
+              fillShader.setUniform('uSpotLightDiffuseColors', this.spotLightDiffuseColors);
+              fillShader.setUniform('uSpotLightSpecularColors', this.spotLightSpecularColors);
 
-            fillShader.setUniform('uSpotLightLocation', this.spotLightPositions);
-            fillShader.setUniform('uSpotLightDirection', this.spotLightDirections);
+              fillShader.setUniform('uSpotLightLocation', this.spotLightPositions);
+              fillShader.setUniform('uSpotLightDirection', this.spotLightDirections);
 
-            fillShader.setUniform('uConstantAttenuation', this.constantAttenuation);
-            fillShader.setUniform('uLinearAttenuation', this.linearAttenuation);
-            fillShader.setUniform('uQuadraticAttenuation', this.quadraticAttenuation);
+              fillShader.setUniform('uConstantAttenuation', this.constantAttenuation);
+              fillShader.setUniform('uLinearAttenuation', this.linearAttenuation);
+              fillShader.setUniform('uQuadraticAttenuation', this.quadraticAttenuation);
+            }
 
             fillShader.bindTextures();
           };
