@@ -28,13 +28,23 @@
             border: 1px solid #555;
         }
         .btn {
-            padding: 10px 15px;
-            background-color: #00ffdd;
-            color: black;
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #00e5ff;
+            color: #000012;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.3s ease;
             border: none;
             cursor: pointer;
             margin-right: 10px;
             font-family: monospace;
+        }
+        .btn:hover {
+            background-color: #ffffff;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -57,19 +67,22 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/__/firebase/init.js"></script>
     <script src="firebase-init.js"></script>
+    <script src="utils.js"></script>
 
     <script>
-        firebase.auth().signInAnonymously().catch((error) => {
-            console.error("Error signing in anonymously: ", error);
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch((error) => {
+            console.error("Error signing in with Google: ", error);
         });
 
         fetch('research.md')
             .then(response => response.text())
             .then(text => {
                 const dirtyHTML = marked.parse(text);
-                const cleanHTML = DOMPurify.sanitize(dirtyHTML);
-                document.getElementById('content').innerHTML = cleanHTML;
+                const cleanNode = DOMPurify.sanitize(dirtyHTML, { RETURN_DOM_FRAGMENT: true });
+                document.getElementById('content').replaceChildren(cleanNode);
             });
         
         function showCommentBox() {
@@ -90,19 +103,17 @@
                 .then(() => {
                     commentInput.value = '';
                     showCommentBox();
-                    loadComments();
                 })
                 .catch(error => {
-                    console.error("Error adding document: ", error);
+                    alert("Error adding document: " + error);
                 });
             }
         }
 
         function deleteComment(id) {
             commentsCollection.doc(id).delete().then(() => {
-                loadComments();
             }).catch((error) => {
-                console.error("Error removing document: ", error);
+                alert("Error removing document: " + error);
             });
         }
 
@@ -113,10 +124,9 @@
                     text: newText
                 })
                 .then(() => {
-                    loadComments();
                 })
                 .catch((error) => {
-                    console.error("Error updating document: ", error);
+                    alert("Error updating document: " + error);
                 });
             }
         }
@@ -132,90 +142,182 @@
                 };
                 commentsCollection.doc(id).collection("replies").add(reply)
                 .then(() => {
-                    loadComments();
                 })
                 .catch((error) => {
-                    console.error("Error adding reply: ", error);
+                    alert("Error adding reply: " + error);
                 });
             }
         }
 
+
+        let cachedComments = [];
+        let cachedReplies = [];
+        let unsubscribeComments = null;
+        let unsubscribeReplies = null;
+
         function loadComments() {
-            const commentsQuery = commentsCollection.orderBy("timestamp", "desc").get();
-            const repliesQuery = db.collectionGroup("replies").orderBy("timestamp", "asc").get();
+            if (unsubscribeComments) unsubscribeComments();
+            if (unsubscribeReplies) unsubscribeReplies();
 
-            return Promise.all([commentsQuery, repliesQuery]).then(([commentsSnapshot, repliesSnapshot]) => {
-                const commentsList = document.getElementById('comments-list');
-                commentsList.innerHTML = '';
-
-                const user = firebase.auth().currentUser;
-                const repliesMap = new Map();
-                repliesSnapshot.forEach((replyDoc) => {
-                    const reply = replyDoc.data();
-                    const parentId = replyDoc.ref.parent.parent.id;
-                    if (!repliesMap.has(parentId)) {
-                        repliesMap.set(parentId, []);
-                    }
-                    repliesMap.get(parentId).push(reply);
+            unsubscribeComments = commentsCollection.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                cachedComments = [];
+                snapshot.forEach((doc) => {
+                    cachedComments.push({ id: doc.id, data: doc.data() });
                 });
-
-                commentsSnapshot.forEach((doc) => {
-                    const comment = doc.data();
-                    const commentElement = document.createElement('div');
-                    commentElement.classList.add('comment-box');
-                    
-                    const commentText = document.createElement('p');
-                    commentText.textContent = comment.text;
-                    commentElement.appendChild(commentText);
-
-                    const actions = document.createElement('div');
-                    const replyButton = document.createElement('button');
-                    replyButton.textContent = "Reply";
-                    replyButton.classList.add('btn');
-                    replyButton.onclick = () => replyToComment(doc.id);
-                    actions.appendChild(replyButton);
-                    
-                    if (user && user.uid === comment.authorId) {
-                        const editButton = document.createElement('button');
-                        editButton.textContent = "Edit";
-                        editButton.classList.add('btn');
-                        editButton.onclick = () => editComment(doc.id, comment.text);
-                        actions.appendChild(editButton);
-
-                        const deleteButton = document.createElement('button');
-                        deleteButton.textContent = "Delete";
-                        deleteButton.classList.add('btn');
-                        deleteButton.onclick = () => deleteComment(doc.id);
-                        actions.appendChild(deleteButton);
-                    }
-                    
-                    commentElement.appendChild(actions);
-
-                    // Load replies
-                    const repliesList = document.createElement('div');
-                    repliesList.style.marginLeft = "20px";
-                    commentElement.appendChild(repliesList);
-
-                    const replies = repliesMap.get(doc.id) || [];
-                    replies.forEach((reply) => {
-                        const replyElement = document.createElement('div');
-                        replyElement.classList.add('comment-box');
-                        replyElement.textContent = reply.text;
-                        repliesList.appendChild(replyElement);
-                    });
-
-                    commentsList.appendChild(commentElement);
-                });
-            }).catch((error) => {
-                console.error("Error loading comments and replies: ", error);
+                renderComments();
+            }, (error) => {
+                console.error("Error loading comments: ", error);
             });
+
+            unsubscribeReplies = db.collectionGroup("replies").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+                cachedReplies = [];
+                snapshot.forEach((replyDoc) => {
+                    cachedReplies.push({
+                        id: replyDoc.id,
+                        data: replyDoc.data(),
+                        parentId: replyDoc.ref.parent.parent.id
+                    });
+                });
+                renderComments();
+            }, (error) => {
+                console.error("Error loading replies: ", error);
+            });
+        }
+
+        function renderComments() {
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = '';
+
+            const user = firebase.auth().currentUser;
+            const repliesMap = new Map();
+
+            cachedReplies.forEach((reply) => {
+                if (!repliesMap.has(reply.parentId)) {
+                    repliesMap.set(reply.parentId, []);
+                }
+                repliesMap.get(reply.parentId).push(reply.data);
+            });
+
+            cachedComments.forEach((commentObj) => {
+                const docId = commentObj.id;
+                const comment = commentObj.data;
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment-box');
+
+                const commentText = document.createElement('p');
+                commentText.textContent = comment.text;
+                commentElement.appendChild(commentText);
+
+                const actions = document.createElement('div');
+                const replyButton = document.createElement('button');
+                replyButton.textContent = "Reply";
+                replyButton.classList.add('btn');
+                replyButton.onclick = () => replyToComment(docId);
+                actions.appendChild(replyButton);
+
+                if (user && user.uid === comment.authorId) {
+                    const editButton = document.createElement('button');
+                    editButton.textContent = "Edit";
+                    editButton.classList.add('btn');
+                    editButton.onclick = () => editComment(docId, comment.text);
+                    actions.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = "Delete";
+                    deleteButton.classList.add('btn');
+                    deleteButton.onclick = () => deleteComment(docId);
+                    actions.appendChild(deleteButton);
+                }
+
+                commentElement.appendChild(actions);
+
+                // Load replies
+                const repliesList = document.createElement('div');
+                repliesList.style.marginLeft = "20px";
+                commentElement.appendChild(repliesList);
+
+                const replies = repliesMap.get(docId) || [];
+                replies.forEach((reply) => {
+                    const replyElement = document.createElement('div');
+                    replyElement.classList.add('comment-box');
+                    replyElement.textContent = reply.text;
+                    repliesList.appendChild(replyElement);
+                });
+
+                commentsList.appendChild(commentElement);
+            });
+        }
+
+        function renderComments({ comments, repliesMap }) {
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = '';
+
+            const user = firebase.auth().currentUser;
+
+            comments.forEach((doc) => {
+                const comment = doc.data;
+                const commentElement = document.createElement('div');
+                commentElement.classList.add('comment-box');
+
+                const commentText = document.createElement('p');
+                commentText.textContent = comment.text;
+                commentElement.appendChild(commentText);
+
+                const actions = document.createElement('div');
+                const replyButton = document.createElement('button');
+                replyButton.textContent = "Reply";
+                replyButton.classList.add('btn');
+                replyButton.onclick = () => replyToComment(doc.id);
+                actions.appendChild(replyButton);
+
+                if (user && user.uid === comment.authorId) {
+                    const editButton = document.createElement('button');
+                    editButton.textContent = "Edit";
+                    editButton.classList.add('btn');
+                    editButton.onclick = () => editComment(doc.id, comment.text);
+                    actions.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = "Delete";
+                    deleteButton.classList.add('btn');
+                    deleteButton.onclick = () => deleteComment(doc.id);
+                    actions.appendChild(deleteButton);
+                }
+
+                commentElement.appendChild(actions);
+
+                // Load replies
+                const repliesList = document.createElement('div');
+                repliesList.style.marginLeft = "20px";
+                commentElement.appendChild(repliesList);
+
+                const replies = repliesMap.get(doc.id) || [];
+                replies.forEach((reply) => {
+                    const replyElement = document.createElement('div');
+                    replyElement.classList.add('comment-box');
+                    replyElement.textContent = reply.text;
+                    repliesList.appendChild(replyElement);
+                });
+
+                commentsList.appendChild(commentElement);
+            });
+        }
+
+        function loadComments() {
+            return fetchCommentsData()
+                .then(renderComments)
+                .catch((error) => {
+                    console.error("Error loading comments and replies: ", error);
+                });
         }
 
         let isInitialLoad = true;
         firebase.auth().onAuthStateChanged((user) => {
             if (isInitialLoad) {
-                loadComments();
+                initListeners();
                 isInitialLoad = false;
+            } else {
+                renderComments(); // Re-render if auth state changes (e.g. login)
             }
         });
     </script>
