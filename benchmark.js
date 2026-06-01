@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+
 
 let getCalls = 0;
 let snapshotCalls = 0;
@@ -102,7 +102,7 @@ async function loadCommentsOptimized() {
         repliesMap.get(reply.parentId).push(reply.data);
     });
 
-    const results = [];
+    const results = new Map();
     cachedComments.forEach((commentObj) => {
         const commentId = commentObj.id;
         const comment = commentObj.data;
@@ -116,9 +116,9 @@ async function loadCommentsOptimized() {
 if (require.main === module) {
     loadCommentsOptimized().then(({ results, getCalls, snapshotCalls }) => {
         console.log(`Total Firestore onSnapshot() registrations: ${snapshotCalls}`);
-        console.log(`Total comments loaded: ${results.length}`);
-        console.log(`Example comment_1 replies count: ${results.find(r => r.commentId === 'comment_1').replies.length}`);
+        console.log(`Total comments loaded: ${results.size}`);
+        console.log(`Example comment_1 replies count: ${results.get('comment_1').replies.length}`);
     });
 }
 
-export { loadCommentsOptimized, db };
+module.exports = { loadCommentsOptimized, db };
