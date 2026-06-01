@@ -84679,7 +84679,15 @@
                       } else {
                         var vertParts = vertString.split('/');
                         for (var i = 0; i < vertParts.length; i++) {
-                          vertParts[i] = parseInt(vertParts[i]) - 1;
+                          var v = parseInt(vertParts[i]);
+                          if (v < 0) {
+                            if (i === 0) v = loadedVerts.v.length + v;
+                            else if (i === 1) v = loadedVerts.vt.length + v;
+                            else if (i === 2) v = loadedVerts.vn.length + v;
+                          } else {
+                            v = v - 1;
+                          }
+                          vertParts[i] = v;
                         }
 
                         vertIndex = indexedVerts[vertString] = model.vertices.length;
