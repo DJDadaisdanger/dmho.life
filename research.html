@@ -90,20 +90,20 @@
                 document.getElementById('content').replaceChildren(cleanNode);
             });
         
-        function showCommentBox() {
+        window.showCommentBox = function() {
             const commentBox = document.getElementById('comment-box-container');
             commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
         }
 
-        function submitComment() {
+        window.submitComment = function() {
             const commentInput = document.getElementById('comment-input');
             const commentText = commentInput.value;
-            const user = firebase.auth().currentUser;
+            const user = auth.currentUser;
             if (commentText.trim() !== '' && user) {
-                commentsCollection.add({
+                addDoc(commentsCollection, {
                     text: commentText,
                     authorId: user.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    timestamp: serverTimestamp()
                 })
                 .then(() => {
                     commentInput.value = '';
@@ -122,10 +122,10 @@
             });
         }
 
-        function editComment(id, oldText) {
+        window.editComment = function(id, oldText) {
             const newText = prompt("Edit your comment:", oldText);
             if (newText && newText.trim() !== '') {
-                commentsCollection.doc(id).update({
+                updateDoc(doc(commentsCollection, id), {
                     text: newText
                 })
                 .then(() => {
@@ -136,16 +136,16 @@
             }
         }
 
-        function replyToComment(id) {
+        window.replyToComment = function(id) {
             const replyText = prompt("Write your reply:");
-            const user = firebase.auth().currentUser;
+            const user = auth.currentUser;
             if (replyText && replyText.trim() !== '' && user) {
                 const reply = {
                     text: replyText,
                     authorId: user.uid,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    timestamp: serverTimestamp()
                 };
-                commentsCollection.doc(id).collection("replies").add(reply)
+                addDoc(collection(doc(commentsCollection, id), "replies"), reply)
                 .then(() => {
                 })
                 .catch((error) => {
@@ -309,7 +309,7 @@
         }
 
         let isInitialLoad = true;
-        firebase.auth().onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             if (isInitialLoad) {
                 initListeners();
                 isInitialLoad = false;
