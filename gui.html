@@ -94,6 +94,11 @@
               }
               return this;
           }
+          static subInto(v1, v2, target) {
+              target.x = v1.x - v2.x;
+              target.y = v1.y - v2.y;
+              return target;
+          }
           static sub(v1, v2) {
               return new Vector(v1.x - v2.x, v1.y - v2.y);
           }
@@ -112,6 +117,10 @@
               this.r = 8;
               this.maxspeed = 10;
               this.maxforce = 1;
+              this._arriveDesired = new Vector();
+              this._arriveSteer = new Vector();
+              this._fleeDesired = new Vector();
+              this._fleeSteer = new Vector();
           }
           behaviors(mouse) {
               const arrive = this.arrive(this.target);
@@ -136,28 +145,30 @@
               ctx.fill();
           }
           arrive(target) {
-              const desired = Vector.sub(target, this.pos);
+              const desired = Vector.subInto(target, this.pos, this._arriveDesired);
               const d = desired.mag();
               let speed = this.maxspeed;
               if (d < 100) {
                   speed = (d / 100) * this.maxspeed;
               }
               desired.setMag(speed);
-              const steer = Vector.sub(desired, this.vel);
+              const steer = Vector.subInto(desired, this.vel, this._arriveSteer);
               steer.limit(this.maxforce);
               return steer;
           }
           flee(target) {
-              const desired = Vector.sub(target, this.pos);
+              const desired = Vector.subInto(target, this.pos, this._fleeDesired);
               const d = desired.mag();
               if (d < 50) {
                   desired.setMag(this.maxspeed);
                   desired.mult(-1);
-                  const steer = Vector.sub(desired, this.vel);
+                  const steer = Vector.subInto(desired, this.vel, this._fleeSteer);
                   steer.limit(this.maxforce);
                   return steer;
               } else {
-                  return new Vector(0, 0);
+                  this._fleeSteer.x = 0;
+                  this._fleeSteer.y = 0;
+                  return this._fleeSteer;
               }
           }
       }
