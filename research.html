@@ -308,14 +308,6 @@
             });
         }
 
-        function loadComments() {
-            return fetchCommentsData()
-                .then(renderComments)
-                .catch((error) => {
-                    console.error("Error loading comments and replies: ", error);
-                });
-        }
-
         let isInitialLoad = true;
         firebase.auth().onAuthStateChanged((user) => {
             if (isInitialLoad) {
