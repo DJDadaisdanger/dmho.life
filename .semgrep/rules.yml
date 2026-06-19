@@ -1,0 +1,86 @@
+rules:
+  # RULE 1: Zero Client-Side Security Controls
+  # Detect conditional branches based on client-side auth state to restrict UI flow
+  - id: client-side-auth-routing
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($AUTH) { $ROUTER.push(...) }
+          - pattern: |
+              if (!$AUTH) { $ROUTER.redirect(...) }
+          - pattern: |
+              $AUTH ? <$PROTECTED_COMPONENT /> : <$LOGIN_COMPONENT />
+      - pattern-inside: |
+          import ... 'react-router-dom';
+          ...
+      - pattern-inside: |
+          <script>
+            ...
+          </script>
+    message: "Client-side routing guard detected based on auth state. Ensure the backend independently validates the session when rendering the protected component or fetching its data (Rule 1 & 3)."
+    languages:
+      - javascript
+      - typescript
+      - tsx
+      - jsx
+    severity: WARNING
+
+  # RULE 3: Strict Server-Side Session Validation & RULE 4: Enforce Strict Server-Side IDOR Protections
+  # Detect Firebase/Firestore updates from the client without relying on Firestore Security Rules.
+  # Note: The actual enforcement here is in firestore.rules, which we have verified are strong.
+  # This Semgrep rule acts as a linter for insecure client-side patterns trying to bypass backend checks.
+  - id: insecure-firestore-client-mutation
+    patterns:
+      - pattern: |
+          db.collection($COLLECTION).doc($DOC_ID).update($DATA)
+      - pattern-not-inside: |
+          if ($USER_ID === $AUTHOR_ID) { ... }
+    message: "Potential insecure client-side Firestore mutation. Ensure firestore.rules strictly validates ownership (request.auth.uid == resource.data.authorId) for this collection to prevent IDOR (Rule 4)."
+    languages:
+      - javascript
+      - typescript
+    severity: WARNING
+
+  # RULE 5: Secure State Mutation
+  # Detect password update endpoints in backend (Express/Node) that don't verify old password or OTP
+  - id: insecure-password-reset
+    patterns:
+      - pattern: |
+          $APP.post('/reset-password', function ($REQ, $RES) {
+            ...
+            $USER.password = $REQ.body.newPassword;
+            ...
+            $USER.save();
+          })
+      - pattern-not-inside: |
+          $APP.post('/reset-password', function ($REQ, $RES) {
+            ...
+            $VERIFY_OTP($REQ.body.otp);
+            ...
+          })
+      - pattern-not-inside: |
+          $APP.post('/reset-password', function ($REQ, $RES) {
+            ...
+            $VERIFY_PASSWORD($REQ.body.oldPassword);
+            ...
+          })
+    message: "Insecure state mutation: Password reset endpoint does not appear to verify an OTP or the old password. (Rule 5)"
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+
+  # Detect direct IDOR in Express handlers
+  - id: potential-express-idor
+    patterns:
+      - pattern: |
+          $APP.$METHOD($ROUTE, function ($REQ, $RES) {
+            ...
+            $DB.update({ userId: $REQ.body.userId }, ...)
+            ...
+          })
+    message: "Potential IDOR: Using user ID directly from request body to mutate state. Validate against session token instead (e.g., req.session.userId). (Rule 4)"
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
